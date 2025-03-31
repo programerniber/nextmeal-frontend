@@ -1,10 +1,15 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.jsx'
 
-createRoot(document.getElementById('root')).render(
-  <StrictMode>
+import React from 'react'
+import ReactDOM  from 'react-dom/client'
+import {App} from './App.jsx'
+import './App.css'
+
+
+window.API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api"
+
+const root = ReactDOM.createRoot(document.getElementById('root'))
+
+root.render(
+ 
     <App />
-  </StrictMode>,
 )
