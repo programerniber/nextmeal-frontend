@@ -60,7 +60,8 @@ const ClienteList = ({ clientes, onEdit, onDelete, onRefresh }) => {
   const handleToggleEstado = async (cliente) => {
     try {
       setIsUpdating(true)
-      await toggleClienteEstado(cliente.id)
+      const estadoCambiar = cliente.estado == "activo" ? "inactivo" : "activo"
+      await toggleClienteEstado(cliente.id, {estado:estadoCambiar})
       onRefresh() // Recargar la lista
     } catch (error) {
       console.error("Error al cambiar estado del cliente:", error)
