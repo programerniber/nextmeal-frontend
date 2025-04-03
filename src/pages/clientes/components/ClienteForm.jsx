@@ -9,7 +9,7 @@ import SelectField from "./form/SelectField"
 const ClienteForm = ({ cliente, onClose, onSave }) => {
   const initialFormData = {
     nombreCompleto: "",
-    tipoDocumento: "CC",
+    tipoDocumento: "cc",
     documentoIdentidad: "",
     correoElectronico: "",
     telefono: "",
@@ -31,7 +31,7 @@ const ClienteForm = ({ cliente, onClose, onSave }) => {
     if (cliente) {
       setFormData({
         nombreCompleto: cliente.nombreCompleto || "",
-        tipoDocumento: cliente.tipoDocumento || "CC",
+        tipoDocumento: cliente.tipoDocumento || "cc",
         documentoIdentidad: cliente.documentoIdentidad || "",
         correoElectronico: cliente.correoElectronico || "",
         telefono: cliente.telefono || "",
@@ -158,7 +158,7 @@ const ClienteForm = ({ cliente, onClose, onSave }) => {
             label: "Tipo",
             value: formData.tipoDocumento,
             options: [
-              { value: "CC", label: "CC" },
+              { value: "cc", label: "cc" },
               { value: "TI", label: "TI" },
               { value: "Pasaporte", label: "Pasaporte" },
               { value: "CE", label: "CE" },
