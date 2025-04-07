@@ -80,9 +80,9 @@ function Dashboard() {
   return <h1 className="text-2xl">Dashboard</h1>
 }
 
-function Usuario() {
-  return <h1 className="text-2xl">Usuario</h1>
-}
+// function Usuario() {
+//   return <h1 className="text-2xl">Usuario</h1>
+// }
 
 // function Categoria() {
 //   return <h1 className="text-2xl">Categoría</h1>
@@ -96,9 +96,9 @@ function Ventas() {
   return <h1 className="text-2xl">Ventas</h1>
 }
 
-function Configuracion() {
-  return <h1 className="text-2xl">Configuración</h1>
-}
+// function Configuracion() {
+//   return <h1 className="text-2xl">Configuración</h1>
+// }
 
 export default App
 
