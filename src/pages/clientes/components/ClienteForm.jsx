@@ -9,7 +9,11 @@ import SelectField from "./form/SelectField"
 const ClienteForm = ({ cliente, onClose, onSave }) => {
   const initialFormData = {
     nombreCompleto: "",
+<<<<<<< HEAD
     tipoDocumento: "cc", // Cambiado a minúsculas para coincidir con el backend
+=======
+    tipoDocumento: "cc",
+>>>>>>> ef5691537d35a5fa42e88f18dc7b82b9c7a71742
     documentoIdentidad: "",
     correoElectronico: "",
     telefono: "",
@@ -38,7 +42,11 @@ const ClienteForm = ({ cliente, onClose, onSave }) => {
 
       setFormData({
         nombreCompleto: cliente.nombreCompleto || "",
+<<<<<<< HEAD
         tipoDocumento: tipoDoc,
+=======
+        tipoDocumento: cliente.tipoDocumento || "cc",
+>>>>>>> ef5691537d35a5fa42e88f18dc7b82b9c7a71742
         documentoIdentidad: cliente.documentoIdentidad || "",
         correoElectronico: cliente.correoElectronico || "",
         telefono: cliente.telefono || "",
@@ -213,9 +221,16 @@ const ClienteForm = ({ cliente, onClose, onSave }) => {
             value: formData.tipoDocumento,
             error: errors.tipoDocumento,
             options: [
+<<<<<<< HEAD
               { value: "cc", label: "Cédula de Ciudadanía" },
               { value: "tarjeta identidad", label: "Tarjeta de Identidad" },
               { value: "passport", label: "Pasaporte" },
+=======
+              { value: "cc", label: "cc" },
+              { value: "TI", label: "TI" },
+              { value: "Pasaporte", label: "Pasaporte" },
+              { value: "CE", label: "CE" },
+>>>>>>> ef5691537d35a5fa42e88f18dc7b82b9c7a71742
             ],
           },
           {

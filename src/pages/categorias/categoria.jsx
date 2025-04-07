@@ -1,57 +1,56 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import ClienteList from "./components/ClienteList"
-import ClienteForm from "./components/ClienteForm"
-import { fetchClientes } from "./api/clienteService"
-import { PlusCircle, Users, RefreshCw } from "lucide-react"
+import { PlusCircle, Tag, RefreshCw } from "lucide-react"
+import { fetchCategorias } from "./api/categoriaService"
+import CategoriaList from "./componentes/CategoriaList"
+import CategoriaForm from "./componentes/CategoriaForm"
 
-const Cliente = () => {
-  const [clientes, setClientes] = useState([])
+const Categoria = () => {
+  const [categorias, setCategorias] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [showForm, setShowForm] = useState(false)
-  const [currentCliente, setCurrentCliente] = useState(null)
+  const [currentCategoria, setCurrentCategoria] = useState(null)
 
-  // Cargar clientes al montar el componente
   useEffect(() => {
-    loadClientes()
+    loadCategorias()
   }, [])
 
-  const loadClientes = async () => {
+  const loadCategorias = async () => {
     try {
       setLoading(true)
-      const data = await fetchClientes()
-      setClientes(data.data) // Asegurarse de que siempre sea un array
+      const data = await fetchCategorias()
+      setCategorias(data || []) // Elimina el .data aquí si tu backend no envía data anidada
       setError(null)
     } catch (err) {
-      setError("Error al cargar los clientes: " + (err.message || "Error desconocido"))
-      console.error("Error al cargar clientes:", err)
-      setClientes([]) // Establecer un array vacío en caso de error
+      setError("Error al cargar las categorías: " + (err.message || "Error desconocido"))
+      console.error("Error al cargar categorías:", err) // Corregir Error por err
+      setCategorias([])
     } finally {
       setLoading(false)
     }
   }
 
   const handleCreateClick = () => {
-    setCurrentCliente(null)
+    setCurrentCategoria(null)
     setShowForm(true)
   }
 
-  const handleEditClick = (cliente) => {
-    setCurrentCliente(cliente)
+  const handleEditClick = (categoria) => {
+    setCurrentCategoria(categoria)
     setShowForm(true)
   }
 
   const handleFormClose = () => {
     setShowForm(false)
-    setCurrentCliente(null)
+    setCurrentCategoria(null)
   }
 
-  const handleClienteUpdated = () => {
-    loadClientes()
+  const handleCategoriaUpdated = () => {
+    loadCategorias()
     setShowForm(false)
-    setCurrentCliente(null)
+    setCurrentCategoria(null)
   }
 
   return (
@@ -60,11 +59,11 @@ const Cliente = () => {
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center">
             <div className="bg-orange-500 p-3 rounded-lg mr-4 shadow-lg shadow-orange-500/20">
-              <Users size={24} className="text-white" />
+              <Tag size={24} className="text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">Gestión de Clientes</h1>
-              <p className="text-gray-400 text-sm">Administra la información de tus clientes</p>
+              <h1 className="text-2xl font-bold text-white">Gestión de Categorías</h1>
+              <p className="text-gray-400 text-sm">Administra las categorías de productos</p>
             </div>
           </div>
           <button
@@ -72,7 +71,7 @@ const Cliente = () => {
             className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all duration-300 transform hover:scale-105 shadow-lg"
           >
             <PlusCircle size={20} />
-            <span>Registrar Cliente</span>
+            <span>Nueva Categoría</span>
           </button>
         </div>
 
@@ -99,17 +98,17 @@ const Cliente = () => {
         {loading ? (
           <div className="flex flex-col justify-center items-center h-64 bg-gray-800 rounded-lg border border-gray-700">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500 mb-4"></div>
-            <p className="text-gray-400">Cargando clientes...</p>
+            <p className="text-gray-400">Cargando categorías...</p>
           </div>
         ) : (
           <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold text-white flex items-center">
-                <Users size={18} className="mr-2 text-orange-400" />
-                Lista de Clientes
+                <Tag size={18} className="mr-2 text-orange-400" />
+                Lista de Categorías
               </h2>
               <button
-                onClick={loadClientes}
+                onClick={loadCategorias}
                 className="p-2 text-gray-400 hover:text-orange-500 transition-colors flex items-center gap-1"
                 title="Refrescar"
               >
@@ -117,20 +116,24 @@ const Cliente = () => {
                 <span>Actualizar</span>
               </button>
             </div>
-            <ClienteList
-              clientes={clientes}
+            <CategoriaList
+              categorias={categorias}
               onEdit={handleEditClick}
-              onDelete={loadClientes}
-              onRefresh={loadClientes}
+              onRefresh={loadCategorias}
             />
           </div>
         )}
       </div>
 
-      {showForm && <ClienteForm cliente={currentCliente} onClose={handleFormClose} onSave={handleClienteUpdated} />}
+      {showForm && (
+        <CategoriaForm
+          categoria={currentCategoria}
+          onClose={handleFormClose}
+          onSave={handleCategoriaUpdated}
+        />
+      )}
     </div>
   )
 }
 
-export default Cliente
-
+export default Categoria
