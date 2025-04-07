@@ -3,12 +3,13 @@ import {
   LayoutDashboard,
   Users,
   ShoppingCart,
-  Package,
   Settings,
   User,
   Tag,
   ChevronsLeft,
   ChevronsRight,
+  Box,
+  ShoppingBag
 } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 import { useSidebar } from "./sidebarUtils" 
@@ -22,9 +23,9 @@ const Sidebar = () => {
     { icon: <User size={20} />, text: "Usuario", to: "/usuario" },
     { icon: <Users size={20} />, text: "Clientes", to: "/clientes" },
     { icon: <Tag size={20} />, text: "Categoría", to: "/categoria" },
-    { icon: <Package size={20} />, text: "Productos", to: "/productos" },
+    { icon: <Box size={20} />, text: "Productos", to: "/productos" },
     { icon: <ShoppingCart size={20} />, text: "Ventas", to: "/ventas" },
-    { icon: <Package size={20} />, text: "Pedidos", to: "/pedidos" },
+    { icon: <ShoppingBag  size={20} />, text: "Pedidos", to: "/pedidos" },
     { icon: <Settings size={20} />, text: "Configuración", to: "/configuracion" },
   ]
 
@@ -36,7 +37,7 @@ const Sidebar = () => {
                 shadow-2xl border-r-2 border-orange-500 
                 transition-all duration-300
                 ${isExpanded ? "w-64" : "w-20"}
-                overflow-hidden
+                overflow-y-auto
             `}
     >
       {/* Línea decorativa superior */}
@@ -72,7 +73,7 @@ const Sidebar = () => {
       </div>
 
       {/* Menú */}
-      <nav className="px-4">
+      <nav className="px-4 pb-8">
         <ul className="space-y-2">
           {menuItems.map((item, index) => (
             <li key={index} className="transition-all duration-300 hover:scale-105">

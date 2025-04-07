@@ -3,6 +3,8 @@ import Sidebar from "./components/layout/sidebar"
 import Navbar from "./components/layout/navbar"
 import Cliente from "./pages/clientes/cliente"
 import Pedido from "./pages/pedidos/pedido"
+import Configuracion from "./pages/configuracion/configuracion"
+import Usuario from "./pages/usuarios/usuario"
 import { SidebarProvider } from "./components/layout/sidebarContext" // Importar el provider
 import "./App.css"
 import { useSidebar } from "./components/layout/sidebarUtils"
@@ -78,9 +80,9 @@ function Dashboard() {
   return <h1 className="text-2xl">Dashboard</h1>
 }
 
-function Usuario() {
-  return <h1 className="text-2xl">Usuario</h1>
-}
+// function Usuario() {
+//   return <h1 className="text-2xl">Usuario</h1>
+// }
 
 function Categoria() {
   return <h1 className="text-2xl">Categoría</h1>
@@ -94,9 +96,9 @@ function Ventas() {
   return <h1 className="text-2xl">Ventas</h1>
 }
 
-function Configuracion() {
-  return <h1 className="text-2xl">Configuración</h1>
-}
+// function Configuracion() {
+//   return <h1 className="text-2xl">Configuración</h1>
+// }
 
 export default App
 

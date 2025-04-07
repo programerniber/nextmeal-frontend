@@ -9,7 +9,7 @@ import SelectField from "./form/SelectField"
 const ClienteForm = ({ cliente, onClose, onSave }) => {
   const initialFormData = {
     nombreCompleto: "",
-    tipoDocumento: "CC",
+    tipoDocumento: "cc", // Cambiado a minúsculas para coincidir con el backend
     documentoIdentidad: "",
     correoElectronico: "",
     telefono: "",
@@ -26,12 +26,19 @@ const ClienteForm = ({ cliente, onClose, onSave }) => {
   const totalSteps = 2
   const [formSubmitted, setFormSubmitted] = useState(false)
 
-  // Si hay un cliente para editar, cargar sus datos
   useEffect(() => {
     if (cliente) {
+      // Mapear los valores del cliente a los valores esperados por el backend
+      let tipoDoc = cliente.tipoDocumento || "cc"
+      // Convertir valores antiguos a nuevos si es necesario
+      if (tipoDoc === "CC") tipoDoc = "cc"
+      if (tipoDoc === "TI") tipoDoc = "tarjeta identidad"
+      if (tipoDoc === "Pasaporte") tipoDoc = "passport"
+      if (tipoDoc === "CE") tipoDoc = "cc" // Fallback a cc si es CE
+
       setFormData({
         nombreCompleto: cliente.nombreCompleto || "",
-        tipoDocumento: cliente.tipoDocumento || "CC",
+        tipoDocumento: tipoDoc,
         documentoIdentidad: cliente.documentoIdentidad || "",
         correoElectronico: cliente.correoElectronico || "",
         telefono: cliente.telefono || "",
@@ -44,34 +51,83 @@ const ClienteForm = ({ cliente, onClose, onSave }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
 
-    // Limpiar error del campo cuando cambia
+    // Validación específica para campos numéricos
+    if (name === "telefono" && !/^\d*$/.test(value)) {
+      return // No actualizar si no son solo números
+    }
+
+    // Limitar longitud para documentoIdentidad y teléfono
+    if (name === "documentoIdentidad" && value.length > 10) {
+      return // No permitir más de 10 caracteres
+    }
+
+    if (name === "telefono" && value.length > 10) {
+      return // No permitir más de 10 caracteres
+    }
+
+    setFormData((prev) => ({ ...prev, [name]: value }))
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }))
     }
   }
 
-  // Validaciones de formulario
   const validations = {
-    nombreCompleto: (value) => (!value.trim() ? "El nombre es obligatorio" : ""),
-    documentoIdentidad: (value) => (!value.trim() ? "El documento es obligatorio" : ""),
+    nombreCompleto: (value) => {
+      if (!value.trim()) return "El nombre es obligatorio"
+      if (value.trim().length < 3) return "El nombre debe tener al menos 3 caracteres"
+      if (value.trim().length > 100) return "El nombre debe tener máximo 100 caracteres"
+      return ""
+    },
+    documentoIdentidad: (value) => {
+      if (!value.trim()) return "El documento es obligatorio"
+      if (value.trim().length < 6) return "El documento debe tener al menos 6 caracteres"
+      if (value.trim().length > 10) return "El documento debe tener máximo 10 caracteres"
+      return ""
+    },
     correoElectronico: (value) => {
       if (!value.trim()) return "El correo es obligatorio"
       if (!/\S+@\S+\.\S+/.test(value)) return "El correo no es válido"
+      if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|net|org)$/i.test(value)) {
+        return "El correo debe terminar en .com, .net o .org"
+      }
       return ""
     },
-    telefono: (value) => (!value.trim() ? "El teléfono es obligatorio" : ""),
-    direccion: (value) => (!value.trim() ? "La dirección es obligatoria" : ""),
+    telefono: (value) => {
+      if (!value.trim()) return "El teléfono es obligatorio"
+      if (!/^\d+$/.test(value)) return "El teléfono debe contener solo números"
+      if (value.trim().length !== 10) return "El teléfono debe tener exactamente 10 dígitos"
+      return ""
+    },
+    direccion: (value) => {
+      if (!value.trim()) return "La dirección es obligatoria"
+      if (value.trim().length < 5) return "La dirección debe tener al menos 5 caracteres"
+      if (value.trim().length > 200) return "La dirección debe tener máximo 200 caracteres"
+      return ""
+    },
+    genero: (value) => {
+      if (!value) return "El género es obligatorio"
+      if (!["masculino", "femenino", "0tro"].includes(value)) {
+        return "El género debe ser masculino, femenino u 0tro"
+      }
+      return ""
+    },
+    tipoDocumento: (value) => {
+      if (!value) return "El tipo de documento es obligatorio"
+      if (!["cc", "tarjeta identidad", "passport"].includes(value)) {
+        return "El tipo de documento debe ser cc, tarjeta identidad o passport"
+      }
+      return ""
+    },
   }
 
-  // Validar solo los campos del paso actual
   const validateCurrentStep = () => {
     const newErrors = {}
     const fieldsToValidate =
-      currentStep === 1 ? ["nombreCompleto", "documentoIdentidad", "correoElectronico"] : ["telefono", "direccion"]
+      currentStep === 1
+        ? ["nombreCompleto", "tipoDocumento", "documentoIdentidad", "correoElectronico"]
+        : ["telefono", "direccion", "genero"]
 
-    // Validar cada campo del paso actual
     fieldsToValidate.forEach((field) => {
       if (validations[field]) {
         const error = validations[field](formData[field])
@@ -85,21 +141,16 @@ const ClienteForm = ({ cliente, onClose, onSave }) => {
 
   const validateForm = () => {
     const newErrors = {}
-
-    // Validar cada campo
     Object.keys(validations).forEach((field) => {
       const error = validations[field](formData[field])
       if (error) newErrors[field] = error
     })
-
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = async (e) => {
-    if (e) e.preventDefault()
-
-    // Evitar múltiples envíos
+  // Función para enviar el formulario - solo se llama en el último paso
+  const submitForm = async () => {
     if (formSubmitted) return
     setFormSubmitted(true)
 
@@ -115,12 +166,14 @@ const ClienteForm = ({ cliente, onClose, onSave }) => {
       if (cliente) {
         await updateCliente(cliente.id, formData)
       } else {
+        console.log("Datos enviados:", formData)
         await createCliente(formData)
       }
 
       onSave()
     } catch (error) {
       console.error("Error al guardar cliente:", error)
+      // Mostrar el mensaje de error específico
       setSubmitError(error.message || "Error al guardar el cliente")
       setFormSubmitted(false)
     } finally {
@@ -128,17 +181,18 @@ const ClienteForm = ({ cliente, onClose, onSave }) => {
     }
   }
 
+  // Función para avanzar al siguiente paso
   const nextStep = () => {
     if (validateCurrentStep()) {
       setCurrentStep((prev) => Math.min(prev + 1, totalSteps))
     }
   }
 
+  // Función para retroceder al paso anterior
   const prevStep = () => {
     setCurrentStep((prev) => Math.max(prev - 1, 1))
   }
 
-  // Definición de campos del formulario por pasos
   const formFieldsByStep = {
     1: [
       {
@@ -157,11 +211,11 @@ const ClienteForm = ({ cliente, onClose, onSave }) => {
             name: "tipoDocumento",
             label: "Tipo",
             value: formData.tipoDocumento,
+            error: errors.tipoDocumento,
             options: [
-              { value: "CC", label: "CC" },
-              { value: "TI", label: "TI" },
-              { value: "Pasaporte", label: "Pasaporte" },
-              { value: "CE", label: "CE" },
+              { value: "cc", label: "Cédula de Ciudadanía" },
+              { value: "tarjeta identidad", label: "Tarjeta de Identidad" },
+              { value: "passport", label: "Pasaporte" },
             ],
           },
           {
@@ -170,6 +224,7 @@ const ClienteForm = ({ cliente, onClose, onSave }) => {
             label: "Documento",
             value: formData.documentoIdentidad,
             error: errors.documentoIdentidad,
+            maxLength: 10,
           },
         ],
       },
@@ -190,6 +245,9 @@ const ClienteForm = ({ cliente, onClose, onSave }) => {
         value: formData.telefono,
         error: errors.telefono,
         icon: <Phone size={18} className="text-orange-400" />,
+        maxLength: 10,
+        pattern: "[0-9]*",
+        inputMode: "numeric",
       },
       {
         type: "text",
@@ -204,10 +262,11 @@ const ClienteForm = ({ cliente, onClose, onSave }) => {
         name: "genero",
         label: "Género",
         value: formData.genero,
+        error: errors.genero,
         options: [
           { value: "masculino", label: "Masculino" },
           { value: "femenino", label: "Femenino" },
-          { value: "otro", label: "Otro" },
+          { value: "0tro", label: "Otro" }, // Nota: Usando "0tro" con un cero como está en el backend
         ],
       },
       {
@@ -229,30 +288,16 @@ const ClienteForm = ({ cliente, onClose, onSave }) => {
     ],
   }
 
-  // Renderizar campos de formulario
   const renderFormField = (field) => {
     if (field.type === "document-group") {
       return (
         <div key="document-group" className="mb-4">
           <div className="flex flex-row space-x-2">
             <div className="w-1/3">
-              <SelectField
-                name={field.fields[0].name}
-                label={field.fields[0].label}
-                value={field.fields[0].value}
-                options={field.fields[0].options}
-                onChange={handleChange}
-              />
+              <SelectField {...field.fields[0]} onChange={handleChange} />
             </div>
             <div className="w-2/3">
-              <FormField
-                type={field.fields[1].type}
-                name={field.fields[1].name}
-                label={field.fields[1].label}
-                value={field.fields[1].value}
-                error={field.fields[1].error}
-                onChange={handleChange}
-              />
+              <FormField {...field.fields[1]} onChange={handleChange} />
             </div>
           </div>
         </div>
@@ -260,34 +305,12 @@ const ClienteForm = ({ cliente, onClose, onSave }) => {
     }
 
     if (field.type === "select") {
-      return (
-        <SelectField
-          key={field.name}
-          name={field.name}
-          label={field.label}
-          value={field.value}
-          options={field.options}
-          onChange={handleChange}
-          icon={field.icon}
-        />
-      )
+      return <SelectField key={field.name} {...field} onChange={handleChange} />
     }
 
-    return (
-      <FormField
-        key={field.name}
-        type={field.type}
-        name={field.name}
-        label={field.label}
-        value={field.value}
-        error={field.error}
-        onChange={handleChange}
-        icon={field.icon}
-      />
-    )
+    return <FormField key={field.name} {...field} onChange={handleChange} />
   }
 
-  // Componente para los pasos del formulario
   const FormSteps = () => (
     <div className="flex justify-center mb-6">
       {Array.from({ length: totalSteps }, (_, i) => i + 1).map((step) => (
@@ -340,81 +363,45 @@ const ClienteForm = ({ cliente, onClose, onSave }) => {
 
           <FormSteps />
 
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              if (currentStep === totalSteps) {
-                handleSubmit()
-              } else {
-                nextStep()
-              }
-            }}
-          >
-            <div className="space-y-4">{formFieldsByStep[currentStep].map(renderFormField)}</div>
+          <div>
+            {formFieldsByStep[currentStep].map(renderFormField)}
 
             <div className="flex justify-between mt-6">
               {currentStep > 1 ? (
                 <button
                   type="button"
                   onClick={prevStep}
-                  className="px-3 py-1.5 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors border border-gray-700 flex items-center gap-1 text-sm"
+                  className="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path
-                      fillRule="evenodd"
-                      d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  Anterior
+                  Atrás
                 </button>
               ) : (
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-3 py-1.5 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors border border-gray-700 text-sm"
-                >
-                  Cancelar
-                </button>
+                <div />
               )}
 
               {currentStep < totalSteps ? (
                 <button
-                  type="submit"
-                  className="px-3 py-1.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors border border-orange-500 flex items-center gap-1 text-sm"
+                  type="button"
+                  onClick={nextStep}
+                  className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600"
                 >
                   Siguiente
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path
-                      fillRule="evenodd"
-                      d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
                 </button>
               ) : (
                 <button
-                  type="submit"
-                  className={`px-3 py-1.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-1 border border-orange-500 text-sm ${
-                    isSubmitting ? "opacity-70 cursor-not-allowed" : ""
+                  type="button"
+                  onClick={submitForm}
+                  disabled={isSubmitting}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white ${
+                    isSubmitting ? "bg-gray-600" : "bg-green-600 hover:bg-green-700"
                   }`}
-                  disabled={isSubmitting || formSubmitted}
                 >
-                  {isSubmitting ? (
-                    <>
-                      <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-                      Guardando...
-                    </>
-                  ) : (
-                    <>
-                      <Save size={16} />
-                      Guardar
-                    </>
-                  )}
+                  <Save size={18} />
+                  {cliente ? "Actualizar" : "Guardar"}
                 </button>
               )}
             </div>
-          </form>
+          </div>
         </div>
       </div>
     </div>

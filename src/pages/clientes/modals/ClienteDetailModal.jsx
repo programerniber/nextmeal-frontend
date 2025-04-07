@@ -12,8 +12,8 @@ const ClienteDetailModal = ({ cliente, onClose, onEdit }) => {
         year: "numeric",
       })
     } catch (error) {
-      console.error("Error al formatear la fecha:", error);
-      return "Fecha no disponible";
+      console.error("Error al formatear la fecha:", error)
+      return "Fecha no disponible"
     }
   }
 
@@ -63,7 +63,15 @@ const ClienteDetailModal = ({ cliente, onClose, onEdit }) => {
 
         <div className="flex justify-end space-x-3">
           <button
-            onClick={onEdit}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onClose() // Primero cerramos el modal de detalles
+              // Pequeño retraso para asegurar que el modal se cierre antes de abrir el de edición
+              setTimeout(() => {
+                onEdit() // Luego abrimos el modal de edición
+              }, 100)
+            }}
             className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2 border border-orange-500"
           >
             <Edit size={16} />
