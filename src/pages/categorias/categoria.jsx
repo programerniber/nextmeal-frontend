@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react"
 import { PlusCircle, Tag, RefreshCw } from "lucide-react"
 import { fetchCategorias } from "./api/categoriaService"
-import CategoriaList from "./componentes/form/CategoriaList"
-import CategoriaForm from "../categorias/componentes/form/CategoriaForm"
+import CategoriaList from "./componentes/CategoriaList"
+import CategoriaForm from "./componentes/CategoriaForm"
 
 const Categoria = () => {
   const [categorias, setCategorias] = useState([])
@@ -21,11 +21,11 @@ const Categoria = () => {
     try {
       setLoading(true)
       const data = await fetchCategorias()
-      setCategorias(data || [])
+      setCategorias(data || []) // Elimina el .data aquí si tu backend no envía data anidada
       setError(null)
     } catch (err) {
       setError("Error al cargar las categorías: " + (err.message || "Error desconocido"))
-      console.error("Error al cargar categorías:", err)
+      console.error("Error al cargar categorías:", err) // Corregir Error por err
       setCategorias([])
     } finally {
       setLoading(false)

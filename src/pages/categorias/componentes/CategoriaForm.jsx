@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { X, Save, Tag as TagIcon, Image as ImageIcon } from "lucide-react"
-import FormField from "../../../clientes/components/form/FormField"
+import FormField from "../componentes/form/FormField"
+import { createCategoria, updateCategoria, fetchCategorias } from "../api/categoriaService"
 
-const CategoriaForm = ({ categoria, onClose, onSave }) => {
+const CategoriaForm = ({ categoria, onClose, onSuccess }) => {
   const initialFormData = {
     nombre: "",
     descripcion: "",
@@ -12,13 +13,38 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
     estado: "activo",
   }
 
+  // Estados para el fetching de categorías existentes
+  const [existingCategorias, setExistingCategorias] = useState([])
+  const [loadingCategorias, setLoadingCategorias] = useState(false)
+  const [fetchError, setFetchError] = useState(null)
+
   const [formData, setFormData] = useState(initialFormData)
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState("")
   const [imagePreview, setImagePreview] = useState("")
 
+  // Función para cargar categorías existentes
+  const loadExistingCategorias = async () => {
+    try {
+      setLoadingCategorias(true)
+      setFetchError(null)
+      const data = await fetchCategorias()
+      setExistingCategorias(data || [])
+    } catch (error) {
+      console.error("Error al cargar categorías:", error)
+      setFetchError(error.message || "Error al cargar categorías existentes")
+      setExistingCategorias([])
+    } finally {
+      setLoadingCategorias(false)
+    }
+  }
+
   useEffect(() => {
+    // Cargar categorías existentes al montar el componente
+    loadExistingCategorias()
+
+    // Inicializar formulario con datos de la categoría si existe
     if (categoria) {
       setFormData({
         nombre: categoria.nombre || "",
@@ -48,26 +74,40 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
     }
   }
 
+  const validateForm = () => {
+    const newErrors = {}
+    
+    if (!formData.nombre.trim()) {
+      newErrors.nombre = "El nombre es obligatorio"
+    } else if (
+      existingCategorias.some(
+        (cat) => 
+          cat.nombre.toLowerCase() === formData.nombre.toLowerCase() && 
+          (!categoria || cat.id !== categoria.id)
+      )
+    ) {
+      newErrors.nombre = "Ya existe una categoría con este nombre"
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
-
-    const newErrors = {}
-    if (!formData.nombre.trim()) newErrors.nombre = "El nombre es obligatorio"
-    setErrors(newErrors)
-
-    if (Object.keys(newErrors).length > 0) return
+    
+    if (!validateForm()) return
 
     setIsSubmitting(true)
     setSubmitError("")
 
     try {
-      // Aquí llamarías al servicio para guardar la categoría
-      // if (categoria) {
-      //   await updateCategoria(categoria.id, formData)
-      // } else {
-      //   await createCategoria(formData)
-      // }
-      onSave()
+      if (categoria) {
+        await updateCategoria(categoria.id, formData)
+      } else {
+        await createCategoria(formData)
+      }
+      onSuccess() // Esto debería disparar un refetch en el componente padre
     } catch (error) {
       console.error("Error al guardar categoría:", error)
       setSubmitError(error.message || "Error al guardar la categoría")
@@ -96,6 +136,14 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
         </div>
 
         <div className="p-4">
+          {/* Mostrar error de carga de categorías */}
+          {fetchError && (
+            <div className="bg-yellow-900/20 text-yellow-500 p-3 rounded-lg mb-4 text-sm">
+              {fetchError}
+            </div>
+          )}
+
+          {/* Mostrar error de submit */}
           {submitError && (
             <div className="bg-red-900 text-white p-3 rounded-lg mb-4 animate-pulse border border-red-500 text-sm">
               {submitError}
@@ -111,6 +159,7 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
               error={errors.nombre}
               onChange={handleChange}
               icon={<TagIcon size={18} className="text-orange-400" />}
+              disabled={loadingCategorias}
             />
 
             <FormField
@@ -119,6 +168,7 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
               label="Descripción (opcional)"
               value={formData.descripcion}
               onChange={handleChange}
+              disabled={loadingCategorias}
             />
 
             <div className="mb-4">
@@ -143,6 +193,7 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
                     accept="image/*"
                     onChange={handleImageChange}
                     className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-500 file:text-white hover:file:bg-orange-600 transition-colors"
+                    disabled={loadingCategorias || isSubmitting}
                   />
                   <p className="text-xs text-gray-500 mt-1">Formatos: JPG, PNG, GIF</p>
                 </div>
@@ -154,15 +205,16 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
                 type="button"
                 onClick={onClose}
                 className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors border border-gray-700"
+                disabled={isSubmitting}
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 className={`px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2 border border-orange-500 ${
-                  isSubmitting ? "opacity-70 cursor-not-allowed" : ""
+                  isSubmitting || loadingCategorias ? "opacity-70 cursor-not-allowed" : ""
                 }`}
-                disabled={isSubmitting}
+                disabled={isSubmitting || loadingCategorias}
               >
                 {isSubmitting ? (
                   <>

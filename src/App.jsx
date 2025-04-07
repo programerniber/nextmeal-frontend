@@ -4,6 +4,7 @@ import Navbar from "./components/layout/navbar"
 import Cliente from "./pages/clientes/cliente"
 import Pedido from "./pages/pedidos/pedido"
 import Categoria from "./pages/categorias/categoria"
+import Productos from "./pages/productos/productos"
 import { SidebarProvider } from "./components/layout/sidebarContext" // Importar el provider
 import "./App.css"
 import { useSidebar } from "./components/layout/sidebarUtils"
@@ -87,9 +88,9 @@ function Usuario() {
 //   return <h1 className="text-2xl">Categoría</h1>
 // }
 
-function Productos() {
-  return <h1 className="text-2xl">Productos</h1>
-}
+// function Productos() {
+//   return <h1 className="text-2xl">Productos</h1>
+// }
 
 function Ventas() {
   return <h1 className="text-2xl">Ventas</h1>

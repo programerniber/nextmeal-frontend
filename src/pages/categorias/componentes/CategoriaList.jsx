@@ -1,9 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { Edit, Trash2, Eye, Image as ImageIcon } from "lucide-react"
-import DeleteConfirmModal from "../../../clientes/modals/DeleteConfirmModal"
-import CategoriaDetailModal from "../../modals/CategoriaDetailModal"
+import { Edit, Trash2, Eye } from "lucide-react"
+import DeleteConfirmModal from "../modals/DeleteConfirmModal"
+import CategoriaDetailModal from "../modals/CategoriaDetailModal"
+import { deleteCategoria } from "../api/categoriaService"
+
 const CategoriaList = ({ categorias, onEdit, onRefresh }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
@@ -21,25 +23,29 @@ const CategoriaList = ({ categorias, onEdit, onRefresh }) => {
 
   const handleConfirmDelete = async () => {
     try {
-      // await deleteCategoria(selectedCategoria.id)
+      await deleteCategoria(selectedCategoria.id)
       onRefresh()
     } catch (error) {
       console.error("Error al eliminar categoría:", error)
+      // Puedes mostrar un mensaje de error al usuario si lo deseas
     } finally {
       setShowDeleteModal(false)
     }
   }
+  if (!Array.isArray(categorias)) {
+    console.error("Error: categorias no es un array", categorias)
+    return <p className="text-red-500">Error al cargar las categorías.</p>
+  }
 
   return (
     <>
-      {/* ... resto del código ... */}
-      
-      {categorias.map((categoria) => (
-        <div key={categoria.id} className="...">
-          <div className="flex items-start justify-between">
-            <div className="flex-1 cursor-pointer" onClick={() => handleViewClick(categoria)}>
-              <h3 className="...">{categoria.nombre}</h3>
-              {/* ... */}
+      {categorias.length > 0 ? (
+        categorias.map((categoria) => (
+          <div key={categoria.id} className="p-4 bg-gray-800 rounded-lg mb-2">
+            <div className="flex items-start justify-between">
+              <div className="flex-1 cursor-pointer" onClick={() => handleViewClick(categoria)}>
+                <h3 className="text-white text-lg font-semibold">{categoria.nombre}</h3>
+              </div>
             </div>
             <div className="flex space-x-2">
               <button
@@ -65,9 +71,10 @@ const CategoriaList = ({ categorias, onEdit, onRefresh }) => {
               </button>
             </div>
           </div>
-          {/* ... */}
-        </div>
-      ))}
+        ))
+      ) : (
+        <p className="text-gray-400">No hay categorías disponibles.</p>
+      )}
 
       {showDetailModal && (
         <CategoriaDetailModal
