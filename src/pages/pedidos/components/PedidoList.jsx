@@ -15,6 +15,7 @@ import {
   Edit,
   Trash2,
   ArrowUpDown,
+  XIcon,
 } from "lucide-react"
 import { fetchPedidos, deletePedido, togglePedidoEstado } from "../api/pedidoservice.js"
 import CambiarEstadoModal from "../modals/CambiarEstadoModal.jsx"
@@ -25,6 +26,7 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchTerm, setSearchTerm] = useState("")
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [isDeleting, setIsDeleting] = useState(false)
   const [pedidoToDelete, setPedidoToDelete] = useState(null)
@@ -36,8 +38,20 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
   const [filterEstado, setFilterEstado] = useState("todos")
   const [sortField, setSortField] = useState("fecha_pedido")
   const [sortDirection, setSortDirection] = useState("desc")
+  // Nuevos estados para búsqueda avanzada
+  const [searchCategory, setSearchCategory] = useState("all")
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false)
 
-  const itemsPerPage = 8
+  const itemsPerPage = 5
+
+  // Implementar debounce para la búsqueda
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm)
+      setCurrentPage(1)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchTerm])
 
   useEffect(() => {
     loadPedidos()
@@ -50,12 +64,17 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
       setPedidos(data || [])
       setError(null)
     } catch (err) {
-      setError("Error al cargar los pedidos: " + (err.message || "Error desconocido"))
+      setError("Error al cargar los pedidos")
       console.error("Error al cargar pedidos:", err)
-      setPedidos([]) // Establecer un array vacío en caso de error
     } finally {
       setLoading(false)
     }
+  }
+
+  // Función para formatear valores en pesos colombianos
+  const formatearPesosColombianos = (valor) => {
+    // Convierte el valor a string y formatea con separadores de miles
+    return valor.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")
   }
 
   const handleDeleteClick = (pedido) => {
@@ -95,6 +114,10 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
     }
   }
 
+  const handleViewDetail = (pedido) => {
+    setShowDetail(pedido)
+  }
+
   // Función para ordenar pedidos
   const sortPedidos = (a, b) => {
     if (sortField === "fecha_pedido") {
@@ -104,22 +127,49 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
     } else if (sortField === "total") {
       return sortDirection === "asc" ? a.total - b.total : b.total - a.total
     } else if (sortField === "cliente") {
-      return sortDirection === "asc"
-        ? a.cliente.nombreCompleto.localeCompare(b.cliente.nombreCompleto)
-        : b.cliente.nombreCompleto.localeCompare(a.cliente.nombreCompleto)
+      const nombreA = a.cliente?.nombreCompleto || ""
+      const nombreB = b.cliente?.nombreCompleto || ""
+      return sortDirection === "asc" ? nombreA.localeCompare(nombreB) : nombreB.localeCompare(nombreA)
     }
     return 0
   }
 
-  // Filtrar y ordenar pedidos
+  // Filtrar y ordenar pedidos con búsqueda avanzada
   const filteredPedidos = pedidos
-    .filter(
-      (pedido) =>
-        (filterEstado === "todos" || pedido.estado === filterEstado) &&
-        (pedido.cliente.nombreCompleto.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          pedido.producto.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          pedido.id.toString().includes(searchTerm)),
-    )
+    .filter((pedido) => {
+      // Filtro por estado
+      if (filterEstado !== "todos" && pedido.estado !== filterEstado) {
+        return false
+      }
+
+      // Si no hay término de búsqueda, mostrar todos
+      if (!debouncedSearchTerm.trim()) {
+        return true
+      }
+
+      const searchLower = debouncedSearchTerm.toLowerCase()
+
+      // Búsqueda por categoría específica
+      if (searchCategory === "cliente") {
+        return pedido.Cliente?.nombrecompleto?.toLowerCase().includes(searchLower)
+      } else if (searchCategory === "producto") {
+        return pedido.producto?.nombre?.toLowerCase().includes(searchLower)
+      } else if (searchCategory === "id") {
+        return pedido.id.toString().includes(debouncedSearchTerm)
+      } else if (searchCategory === "monto") {
+        // Búsqueda por monto (aproximado)
+        const montoStr = pedido.total.toString()
+        return montoStr.includes(debouncedSearchTerm)
+      } else {
+        // Búsqueda en todos los campos
+        return (
+          pedido.Cliente?.nombrecompleto?.toLowerCase().includes(searchLower) ||
+          pedido.Producto?.nombre?.toLowerCase().includes(searchLower) ||
+          pedido.id.toString().includes(debouncedSearchTerm) ||
+          pedido.total.toString().includes(debouncedSearchTerm)
+        )
+      }
+    })
     .sort(sortPedidos)
 
   // Calcular páginas
@@ -154,10 +204,12 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
     return (
       <tr className="hover:bg-gray-800 transition-colors">
         <td className="px-6 py-4 whitespace-nowrap text-sm text-white">#{pedido.id}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-white">{pedido.cliente.nombreCompleto}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{pedido.producto.nombre}</td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-white">{pedido.Cliente?.nombrecompleto}</td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{pedido.Producto?.nombre}</td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{pedido.cantidad}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">${pedido.total.toLocaleString("es-CO")}</td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+          ${formatearPesosColombianos(pedido.total)}
+        </td>
         <td className="px-6 py-4 whitespace-nowrap">
           <button
             onClick={() => handleChangeStatus(pedido)}
@@ -181,7 +233,7 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
           <div className="flex space-x-2">
             <button
-              onClick={() => setShowDetail(pedido)}
+              onClick={() => handleViewDetail(pedido)}
               className="text-blue-400 hover:text-blue-300 transition-colors"
               title="Ver detalles"
             >
@@ -223,11 +275,11 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
       >
         <div className="flex justify-between items-start mb-2">
           <h3 className="text-white font-medium">
-            #{pedido.id} - {pedido.producto.nombre}
+            #{pedido.id} - {pedido.Producto?.nombre || "Producto no disponible"}
           </h3>
           <div className="flex space-x-1">
             <button
-              onClick={() => setShowDetail(pedido)}
+              onClick={() => handleViewDetail(pedido)}
               className="text-blue-400 hover:text-blue-300 transition-colors p-1"
               title="Ver detalles"
             >
@@ -243,11 +295,13 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
           </div>
         </div>
 
-        <div className="text-sm text-gray-300 mb-2">Cliente: {pedido.cliente.nombreCompleto}</div>
+        <div className="text-sm text-gray-300 mb-2">
+          Cliente: {pedido.Cliente?.nombrecompleto || "Cliente no disponible"}
+        </div>
 
         <div className="flex justify-between text-sm mb-3">
           <span className="text-gray-400">Cantidad: {pedido.cantidad}</span>
-          <span className="text-white font-medium">${pedido.total.toLocaleString("es-CO")}</span>
+          <span className="text-white font-medium">${formatearPesosColombianos(pedido.total)} pesos</span>
         </div>
 
         <div className="flex justify-between items-center">
@@ -270,61 +324,140 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
     )
   }
 
-  // Componente para la barra de búsqueda y filtros
+  // Componente para la barra de búsqueda mejorada
   const SearchBar = () => (
-    <div className="flex flex-col md:flex-row gap-4 mb-6">
-      <div className="flex items-center flex-grow bg-gray-900 border border-gray-700 rounded-lg p-2">
-        <Search className="text-gray-400 ml-2" size={20} />
-        <input
-          type="text"
-          placeholder="Buscar por cliente, producto o ID..."
-          className="w-full bg-transparent border-none text-white focus:outline-none px-3 py-2"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-      </div>
-
-      <div className="flex gap-2">
-        <div className="relative">
-          <select
-            value={filterEstado}
-            onChange={(e) => setFilterEstado(e.target.value)}
-            className="appearance-none bg-gray-800 border border-gray-700 text-white py-2 px-4 pr-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-          >
-            <option value="todos">Todos los estados</option>
-            <option value="pendiente">Pendientes</option>
-            <option value="preparacion">En preparación</option>
-            <option value="terminado">Terminados</option>
-            <option value="cancelado">Cancelados</option>
-          </select>
-          <Filter
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"
-            size={16}
-          />
+    <div className="flex flex-col gap-4 mb-6">
+      {/* Barra de búsqueda principal */}
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="relative flex-grow">
+          <div className="flex items-center bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
+            <Search className="text-gray-400 ml-3" size={20} />
+            <input
+              type="text"
+              placeholder="Buscar..."
+              className="w-full bg-transparent border-none text-white focus:outline-none px-3 py-3"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              autoComplete="off"
+            />
+            {searchTerm && (
+              <button onClick={() => setSearchTerm("")} className="text-gray-400 hover:text-white p-2 mr-1">
+                <XIcon size={16} />
+              </button>
+            )}
+            <button
+              onClick={() => setShowAdvancedSearch(!showAdvancedSearch)}
+              className="bg-gray-800 text-gray-300 hover:bg-gray-700 px-3 py-3 border-l border-gray-700"
+            >
+              <Filter size={16} />
+            </button>
+          </div>
         </div>
 
-        <button
-          onClick={() => setViewMode(viewMode === "table" ? "kanban" : "table")}
-          className="p-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors border border-gray-700"
-          title={viewMode === "table" ? "Ver como Kanban" : "Ver como Tabla"}
-        >
-          {viewMode === "table" ? "Kanban" : "Tabla"}
-        </button>
+        <div className="flex gap-2">
+          <div className="relative">
+            <select
+              value={filterEstado}
+              onChange={(e) => setFilterEstado(e.target.value)}
+              className="appearance-none bg-gray-800 border border-gray-700 text-white py-3 px-4 pr-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+            >
+              <option value="todos">Todos los estados</option>
+              <option value="pendiente">Pendientes</option>
+              <option value="preparacion">En preparación</option>
+              <option value="terminado">Terminados</option>
+              <option value="cancelado">Cancelados</option>
+            </select>
+            <Filter
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"
+              size={16}
+            />
+          </div>
 
-        <button
-          onClick={onRefresh}
-          className="p-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors border border-gray-700"
-          title="Refrescar"
-        >
-          <RefreshCw size={20} />
-        </button>
+          <button
+            onClick={() => setViewMode(viewMode === "table" ? "kanban" : "table")}
+            className="p-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors border border-gray-700 px-4"
+            title={viewMode === "table" ? "Ver como Kanban" : "Ver como Tabla"}
+          >
+            {viewMode === "table" ? "Kanban" : "Tabla"}
+          </button>
+
+          <button
+            onClick={onRefresh}
+            className="p-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors border border-gray-700"
+            title="Refrescar"
+          >
+            <RefreshCw size={20} />
+          </button>
+        </div>
       </div>
+
+      {/* Opciones de búsqueda avanzada */}
+      {showAdvancedSearch && (
+        <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 animate-fadeIn">
+          <div className="mb-3">
+            <h4 className="text-white font-medium mb-2">Buscar por:</h4>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setSearchCategory("all")}
+                className={`px-3 py-1 rounded-full text-sm ${
+                  searchCategory === "all" ? "bg-orange-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                }`}
+              >
+                Todos los campos
+              </button>
+              <button
+                onClick={() => setSearchCategory("cliente")}
+                className={`px-3 py-1 rounded-full text-sm ${
+                  searchCategory === "cliente"
+                    ? "bg-orange-600 text-white"
+                    : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                }`}
+              >
+                Cliente
+              </button>
+              <button
+                onClick={() => setSearchCategory("producto")}
+                className={`px-3 py-1 rounded-full text-sm ${
+                  searchCategory === "producto"
+                    ? "bg-orange-600 text-white"
+                    : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                }`}
+              >
+                Producto
+              </button>
+              <button
+                onClick={() => setSearchCategory("id")}
+                className={`px-3 py-1 rounded-full text-sm ${
+                  searchCategory === "id" ? "bg-orange-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                }`}
+              >
+                ID
+              </button>
+              <button
+                onClick={() => setSearchCategory("monto")}
+                className={`px-3 py-1 rounded-full text-sm ${
+                  searchCategory === "monto"
+                    ? "bg-orange-600 text-white"
+                    : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                }`}
+              >
+                Monto
+              </button>
+            </div>
+          </div>
+
+          <div className="text-sm text-gray-400">
+            <p>Resultados encontrados: {filteredPedidos.length}</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 
   // Componente para la paginación
   const Pagination = () => {
-    if (totalPages <= 1) return null
+    // Only show pagination if we have more than 5 items
+    if (filteredPedidos.length <= 5) return null
 
     return (
       <div className="flex justify-between items-center mt-4 text-white">
@@ -405,7 +538,7 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
             <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">ID</th>
             <SortableHeader field="cliente" label="Cliente" />
             <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Producto</th>
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Cant.</th>
+            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Cantidad</th>
             <SortableHeader field="total" label="Total" />
             <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Estado</th>
             <SortableHeader field="fecha_pedido" label="Fecha" />
@@ -502,27 +635,45 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
       <SearchBar />
 
       {error && (
-        <div className="bg-red-900 text-white p-4 rounded-lg mb-6 animate-pulse border border-red-500">{error}</div>
+        <div className="bg-red-900 text-red-200 p-4 mb-4 rounded-lg border border-red-700">
+          <p className="flex items-center">
+            <XCircle className="mr-2" size={20} />
+            {error}
+          </p>
+        </div>
       )}
 
       {viewMode === "table" ? <TableView /> : <KanbanView />}
 
       {viewMode === "table" && <Pagination />}
 
-      {/* Modales */}
+      {/* Modal de confirmación de eliminación */}
       {isDeleting && (
-        <DeleteConfirmModal
-          cliente={pedidoToDelete}
-          onConfirm={confirmDelete}
-          onCancel={() => {
-            setIsDeleting(false)
-            setPedidoToDelete(null)
-          }}
-          title="Confirmar eliminación de pedido"
-          message={`¿Estás seguro de que deseas eliminar el pedido #${pedidoToDelete?.id}?`}
-        />
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-900 rounded-lg p-6 w-full max-w-md mx-4 border border-gray-700">
+            <h3 className="text-xl font-bold text-white mb-4">Confirmar eliminación</h3>
+            <p className="text-gray-300 mb-6">
+              ¿Estás seguro de que deseas eliminar el pedido #{pedidoToDelete?.id}? Esta acción no se puede deshacer.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setIsDeleting(false)}
+                className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
+      {/* Modal de detalles del pedido */}
       {showDetail && (
         <PedidoDetailModal
           pedido={showDetail}
@@ -538,14 +689,13 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
         />
       )}
 
+      {/* Modal para cambiar estado */}
       {showEstadoModal && (
         <CambiarEstadoModal
           pedido={pedidoToChangeStatus}
+          onClose={() => setShowEstadoModal(false)}
           onConfirm={confirmChangeStatus}
-          onCancel={() => {
-            setShowEstadoModal(false)
-            setPedidoToChangeStatus(null)
-          }}
+          isLoading={isUpdating}
         />
       )}
     </div>
@@ -553,4 +703,3 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
 }
 
 export default PedidoList
-
