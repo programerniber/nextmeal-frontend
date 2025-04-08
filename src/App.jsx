@@ -5,6 +5,8 @@ import Cliente from "./pages/clientes/cliente"
 import Pedido from "./pages/pedidos/pedido"
 import Categoria from "./pages/categorias/categoria"
 import Productos from "./pages/productos/productos"
+import Usuario from "./pages/usuarios/usuario"
+import Configuracion from "./pages/configuracion/configuracion"
 import { SidebarProvider } from "./components/layout/sidebarContext" // Importar el provider
 import "./App.css"
 import { useSidebar } from "./components/layout/sidebarUtils"
