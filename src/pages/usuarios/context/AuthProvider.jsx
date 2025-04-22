@@ -1,53 +1,95 @@
+// AuthProvider.jsx
+"use client"
+
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import jwt_decode from "jwt-decode"
+import { getUsuarioAutenticado, loginUsuario, logoutUsuario } from "../api/usuarioService.js"
 import { AuthContext } from "./AuthContext"
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [errors, setErrors] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true)
   const navigate = useNavigate()
 
   useEffect(() => {
-    const token = localStorage.getItem("token")
-    if (token) {
+    const checkAuth = async () => {
       try {
-        const decoded = jwt_decode(token)
-        setUser(decoded)
+        const userData = await getUsuarioAutenticado()
+        setUser(userData)
+        setIsAuthenticated(true)
       } catch (error) {
-        console.error("Error decoding token:", error)
-        logout()
+        console.error("No autenticado:", error)
+        setUser(null)
+        setIsAuthenticated(false)
+      } finally {
+        setIsLoadingAuth(false)
       }
     }
-    setLoading(false)
+
+    checkAuth()
   }, [])
 
-  const login = (token, userData) => {
-    localStorage.setItem("token", token)
-    setUser(userData)
-    navigate("/")
-  }
-
-  const logout = () => {
-    localStorage.removeItem("token")
-    setUser(null)
-    navigate("/login")
-  }
-
-  const isAuthenticated = () => {
-    const token = localStorage.getItem("token")
-    if (!token) return false
-
+  const signin = async (credentials) => {
+    setLoading(true);
+    setErrors([]);
+    console.log( credentials)
     try {
-      const decoded = jwt_decode(token)
-      return decoded.exp * 1000 > Date.now()
-    } catch {
-      return false
+      // 1. Hacer login para establecer la cookie de sesión
+      await loginUsuario(credentials);
+      
+      // 2. Obtener datos del usuario (con la cookie ahora establecida)
+      const userData = await getUsuarioAutenticado();
+      
+      setUser(userData);
+      setIsAuthenticated(true);
+      navigate("/dashboard");
+    } catch (error) {
+      console.error("Error al iniciar sesión:", error);
+      setErrors([error.response?.data?.mensaje || "Error de autenticación"]);
+      setIsAuthenticated(false);
+    } finally {
+      setLoading(false);
     }
+  }
+
+  const signout = async () => {
+    try {
+      await logoutUsuario()
+      setUser(null)
+      setIsAuthenticated(false)
+      navigate("/login")
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error)
+    }
+  }
+
+  const hasRole = (role) => {
+    if (!user) return false
+    return user.id_rol === role
+  }
+
+  const hasPermission = (recurso, accion) => {
+    if (!user || !user.permisos) return false
+    return user.permisos.some((p) => p.recurso === recurso && p.accion === accion)
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isAuthenticated }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated,
+        isLoadingAuth,
+        loading,
+        errors,
+        signin,
+        signout,
+        hasRole,
+        hasPermission,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )

@@ -1,11 +1,9 @@
-"use client"
 
 import { useState, useEffect } from "react"
 import UserList from "./components/UserList"
 import UserForm from "./components/UserForm"
 import { fetchUsuarios } from "./api/usuarioService.js"
 import { PlusCircle, Users, RefreshCw } from "lucide-react"
-import useAuth from "./hooks/useAuth.jsx"
 
 const Usuario = () => {
   const [usuarios, setUsuarios] = useState([])
@@ -13,7 +11,6 @@ const Usuario = () => {
   const [error, setError] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [currentUsuario, setCurrentUsuario] = useState(null)
-  const { user } = useAuth()
 
   // Cargar usuarios al montar el componente
   useEffect(() => {
