@@ -54,7 +54,7 @@ const Usuario = () => {
   }
 
   // Verificar si el usuario tiene permisos de administrador
-  const isAdmin = user?.id_rol === 1 // Asumiendo que 1 es el ID del rol administrador
+  const isAdmin = Users?.id_rol === 1 // Asumiendo que 1 es el ID del rol administrador
 
   return (
     <div className="container mx-auto px-4 py-6">

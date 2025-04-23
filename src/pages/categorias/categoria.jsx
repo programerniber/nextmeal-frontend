@@ -21,11 +21,11 @@ const Categoria = () => {
     try {
       setLoading(true)
       const data = await fetchCategorias()
-      setCategorias(data || []) // Elimina el .data aquí si tu backend no envía data anidada
+      setCategorias(data.data || [])
       setError(null)
     } catch (err) {
       setError("Error al cargar las categorías: " + (err.message || "Error desconocido"))
-      console.error("Error al cargar categorías:", err) // Corregir Error por err
+      console.error("Error al cargar categorías:", err)
       setCategorias([])
     } finally {
       setLoading(false)
@@ -116,21 +116,13 @@ const Categoria = () => {
                 <span>Actualizar</span>
               </button>
             </div>
-            <CategoriaList
-              categorias={categorias}
-              onEdit={handleEditClick}
-              onRefresh={loadCategorias}
-            />
+            <CategoriaList categorias={categorias} onEdit={handleEditClick} onRefresh={loadCategorias} />
           </div>
         )}
       </div>
 
       {showForm && (
-        <CategoriaForm
-          categoria={currentCategoria}
-          onClose={handleFormClose}
-          onSave={handleCategoriaUpdated}
-        />
+        <CategoriaForm categoria={currentCategoria} onClose={handleFormClose} onSave={handleCategoriaUpdated} />
       )}
     </div>
   )

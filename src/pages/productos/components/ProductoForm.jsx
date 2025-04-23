@@ -1,267 +1,319 @@
 "use client"
+
 import { useState, useEffect } from "react"
-import { Save, X, Loader2 } from "lucide-react"
-import FormField, { TextAreaField } from "../../categorias/componentes/form/FormField"
-import SelectField from "../../categorias/componentes/form/SelectField"
-import { crearProducto, actualizarProducto, fetchCategorias, fetchProductos } from "../api/ProductoService"
+import { X, Save, Package, ImageIcon, DollarSign, TagIcon } from "lucide-react"
+import FormField from "../../categorias/componentes/form/FormField"
+import { createProducto, updateProducto } from "../api/ProductoService"
+import { fetchCategorias } from "../../categorias/api/categoriaService"
 
-const ProductoForm = ({ producto, onSave, onClose }) => {
-  // Estados del formulario
-  const [formData, setFormData] = useState({
-    nombre: producto?.nombre || "",
-    precio: producto?.precio || "",
-    estado: producto?.estado || "activo",
-    cantidad: producto?.cantidad || "",
-    descripcion: producto?.descripcion || "",
-    Id_Categoria: producto?.Id_Categoria || ""
-  })
-  
-  // Estados para datos y carga
-  const [categorias, setCategorias] = useState([])
-  const [productos, setProductos] = useState([])
-  const [loading, setLoading] = useState({
-    categorias: false,
-    productos: false,
-    submit: false
-  })
-  const [error, setError] = useState(null)
-
-
-  
-  // Cargar datos iniciales
-  useEffect(() => {
-    const cargarDatosIniciales = async () => {
-      try {
-        setLoading(prev => ({ ...prev, categorias: true, productos: true }))
-        setError(null)
-
-        // Cargar categorías y productos en paralelo
-        const [resCategorias, resProductos] = await Promise.all([
-          fetchCategorias(),
-          fetchProductos()
-        ])
-
-        setCategorias(resCategorias.data || [])
-        setProductos(resProductos.data || [])
-      } catch (err) {
-        console.error("Error al cargar datos iniciales:", err)
-        setError("Error al cargar datos necesarios")
-      } finally {
-        setLoading(prev => ({ ...prev, categorias: false, productos: false }))
-      }
-    }
-
-    cargarDatosIniciales()
-  }, [])
-
-  // Validar nombre único
-  const validarNombreUnico = (nombre) => {
-    return !productos.some(
-      prod => prod.nombre.toLowerCase() === nombre.toLowerCase() &&
-        (!producto || prod._id !== producto._id)
-    )
+const ProductoForm = ({ producto, onClose, onSave }) => {
+  const initialFormData = {
+    nombre: "",
+    descripcion: "",
+    precio: "",
+    stock: "",
+    categoriaId: "",
+    imagenUrl: "",
+    estado: "activo", // Por defecto siempre activo
   }
 
-  // Manejar cambios en el formulario
+  // Estados para el formulario
+  const [formData, setFormData] = useState(initialFormData)
+  const [errors, setErrors] = useState({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState("")
+  const [imagePreview, setImagePreview] = useState("")
+  const [imageFile, setImageFile] = useState(null)
+
+  // Estados para las categorías
+  const [categorias, setCategorias] = useState([])
+  const [loadingCategorias, setLoadingCategorias] = useState(false)
+
+  // Cargar categorías
+  const loadCategorias = async () => {
+    try {
+      setLoadingCategorias(true)
+      const data = await fetchCategorias()
+      console.log(data)
+      // Filtrar solo categorías activas
+      // const categoriasActivas = data.filter((cat) => cat.estado === "activo")
+      setCategorias(data.data)
+    } catch (error) {
+      console.error("Error al cargar categorías:", error)
+    } finally {
+      setLoadingCategorias(false)
+    }
+  }
+
+  useEffect(() => {
+    // Cargar categorías al montar el componente
+    loadCategorias()
+
+    // Inicializar formulario con datos del producto si existe
+    if (producto) {
+      setFormData({
+        nombre: producto.nombre || "",
+        descripcion: producto.descripcion || "",
+        precio: producto.precio?.toString() || "",
+        stock: producto.stock?.toString() || "",
+        categoriaId: producto.categoriaId || "",
+        imagenUrl: producto.imagenUrl || "",
+        estado: producto.estado || "activo",
+      })
+      if (producto.imagenUrl) setImagePreview(producto.imagenUrl)
+    }
+  }, [producto])
+
   const handleChange = (e) => {
     const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'precio' || name === 'cantidad' || name === 'Id_Categoria'
-        ? parseInt(value) || 0
-        : value
-    }))
+
+    // Validación específica para campos numéricos
+    if (name === "precio" || name === "stock") {
+      if (!/^\d*\.?\d*$/.test(value)) {
+        return // No actualizar si no son números o punto decimal
+      }
+    }
+
+    setFormData((prev) => ({ ...prev, [name]: value }))
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }))
   }
-  
-  // Enviar formulario
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      setImageFile(file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setImagePreview(reader.result)
+        setFormData((prev) => ({ ...prev, imagenUrl: reader.result }))
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const validateForm = () => {
+    const newErrors = {}
+
+    if (!formData.nombre.trim()) {
+      newErrors.nombre = "El nombre es obligatorio"
+    }
+
+    if (!formData.precio.trim()) {
+      newErrors.precio = "El precio es obligatorio"
+    } else if (isNaN(Number.parseFloat(formData.precio)) || Number.parseFloat(formData.precio) <= 0) {
+      newErrors.precio = "El precio debe ser un número mayor que cero"
+    }
+
+    if (!formData.stock.trim()) {
+      newErrors.stock = "El stock es obligatorio"
+    } else if (isNaN(Number.parseInt(formData.stock)) || Number.parseInt(formData.stock) < 0) {
+      newErrors.stock = "El stock debe ser un número entero no negativo"
+    }
+
+    if (!formData.categoriaId) {
+      newErrors.categoriaId = "Debe seleccionar una categoría"
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError(null)
 
-    // Validaciones
-    if (!formData.nombre.trim()) {
-      setError("El nombre del producto es obligatorio")
-      return
-    }
+    if (!validateForm()) return
 
-    if (!validarNombreUnico(formData.nombre)) {
-      setError("Ya existe un producto con ese nombre")
-      return
-    }
-
-    if (!formData.precio || formData.precio <= 0) {
-      setError("El precio debe ser mayor a 0")
-      return
-    }
-
-    if (!formData.Id_Categoria) {
-      setError("Debe seleccionar una categoría")
-      return
-    }
+    setIsSubmitting(true)
+    setSubmitError("")
 
     try {
-      setLoading(prev => ({ ...prev, submit: true }))
+      // Preparar los datos para enviar
+      const dataToSend = new FormData()
+      dataToSend.append("nombre", FormData.nombre)
+      dataToSend.append("descripcion", FormData.descripcion)
+      dataToSend.append("precio", FormData.precio)
+      dataToSend.append("stock", FormData.stock)
+      dataToSend.append("categoriaId", FormData.categoriaId)
+      dataToSend.append("estado", FormData.estado)
 
-      const productoData = {
-        nombre: formData.nombre.trim(),
-        precio: formData.precio,
-        cantidad: parseInt(formData.cantidad),
-        descripcion: formData.descripcion?.trim(),
-        estado: formData.estado,
-        Id_Categoria: formData.Id_Categoria  
+      // Agregar la imagen si existe
+      if (imageFile) {
+        dataToSend.append("imagen", imageFile)
       }
-      
 
-      if (producto) {
-        await actualizarProducto(producto.id, productoData)
-        console.log("DATOS QUE LLEGAN AL EDITAR",producto.id,productoData);
-
+      if (producto && producto.id) {
+        await updateProducto(producto.id, FormData)
       } else {
-        await crearProducto(productoData)
-        console.log("DATOS QUE LLEGAN",productoData);
-        
+        await createProducto(FormData)
       }
-
       onSave()
     } catch (error) {
       console.error("Error al guardar producto:", error)
-      setError(error.response?.data?.message || "Error al guardar el producto")
+      setSubmitError(error.message || "Error al guardar el producto")
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   return (
-    <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 shadow-lg max-w-md mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold text-white">
-          {producto ? "Editar Producto" : "Nuevo Producto"}
-        </h2>
-        <button
-          onClick={onClose}
-          className="text-gray-400 hover:text-white transition-colors"
-          disabled={loading.submit}
-        >
-          <X size={24} />
-        </button>
-      </div>
-
-      {/* Mostrar errores */}
-      {error && (
-        <div className="bg-red-900/50 text-red-300 p-3 rounded mb-4 text-sm">
-          {error}
+    <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-gray-900 rounded-xl shadow-2xl w-full max-w-md border-t-4 border-orange-500 animate-fade-in">
+        <div className="flex justify-between items-center p-4 border-b border-gray-800 bg-gray-950">
+          <h2 className="text-lg font-bold text-white flex items-center">
+            <span className="bg-orange-500 text-white p-1.5 rounded-lg mr-2">
+              <Package size={16} />
+            </span>
+            {producto ? "Editar Producto" : "Nuevo Producto"}
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white hover:rotate-90 transition-all bg-gray-800 p-1.5 rounded-full"
+            title="Volver"
+          >
+            <X size={20} />
+          </button>
         </div>
-      )}
 
-      {/* Mostrar carga inicial */}
-      {(loading.categorias || loading.productos) && (
-        <div className="flex justify-center items-center py-8">
-          <Loader2 className="animate-spin h-8 w-8 text-orange-500" />
-        </div>
-      )}
-
-      {/* Formulario */}
-      {!(loading.categorias || loading.productos) && (
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              label="Nombre"
-              name="nombre"
-              value={formData.nombre}
-              onChange={handleChange}
-              required
-              disabled={loading.submit}
-            />
-
-            <FormField
-              label="Precio"
-              type="number"
-              name="precio"
-              value={formData.precio}
-              onChange={handleChange}
-              min="0.01"
-              step="0.01"
-              required
-              disabled={loading.submit}
-            />
-
-            <FormField
-              label="Cantidad"
-              type="number"
-              name="cantidad"
-              value={formData.cantidad}
-              onChange={handleChange}
-              min="0.01"
-              step="0.01"
-              required
-              disabled={loading.submit}
-            />
-
-            <SelectField
-              label="Estado"
-              name="estado"
-              value={formData.estado}
-              onChange={handleChange}
-              options={[
-                { value: "activo", label: "Activo" },
-                { value: "inactivo", label: "Inactivo" }
-              ]}
-              required
-              disabled={loading.submit}
-            />
-
-            <SelectField
-              label="Categoría"
-              name="Id_Categoria"  
-              value={formData.Id_Categoria}
-              onChange={handleChange}
-              options={[
-                { value: "", label: "Seleccione una categoría", disabled: true },
-                ...categorias.map(cat => ({
-                  value: cat.id,
-                  label: cat.nombre
-                }))
-              ]}
-              required
-              disabled={loading.submit}
-            />
-
-            {/* Descripción ocupa ambas columnas */}
-            <div className="md:col-span-2">
-              <TextAreaField
-                label="Descripción"
-                name="descripcion"
-                value={formData.descripcion}
-                onChange={handleChange}
-                required={false}
-                disabled={loading.submit}
-              />
+        <div className="p-4">
+          {/* Mostrar error de submit */}
+          {submitError && (
+            <div className="bg-red-900 text-white p-3 rounded-lg mb-4 animate-pulse border border-red-500 text-sm">
+              {submitError}
             </div>
-          </div>
+          )}
 
-          {/* Botones */}
-          <div className="flex gap-3 pt-4">
-            <button
-              type="submit"
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${loading.submit
-                ? "bg-orange-700 cursor-not-allowed"
-                : "bg-orange-600 hover:bg-orange-700"
-                } text-white`}
-              disabled={loading.submit}
-            >
-              <Save size={18} />
-              Guardar
-            </button>
+          <form onSubmit={handleSubmit}>
+            <FormField
+              type="text"
+              name="nombre"
+              label="Nombre del producto"
+              value={formData.nombre}
+              error={errors.nombre}
+              onChange={handleChange}
+              icon={<Package size={18} className="text-orange-400" />}
+              disabled={isSubmitting}
+            />
 
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-white transition-colors"
-              disabled={loading.submit}
-            >
-              Cancelar
-            </button>
-          </div>
-        </form>
-      )}
+            <FormField
+              type="textarea"
+              name="descripcion"
+              label="Descripción (opcional)"
+              value={formData.descripcion}
+              onChange={handleChange}
+              disabled={isSubmitting}
+            />
+
+            <div className="grid grid-cols-1 gap-4 mb-4">
+              <FormField
+                type="text"
+                name="precio"
+                label="Precio"
+                value={formData.precio}
+                error={errors.precio}
+                onChange={handleChange}
+                icon={<DollarSign size={18} className="text-orange-400" />}
+                disabled={isSubmitting}
+              />
+
+              {/* <FormField
+                type="text"
+                name="stock"
+                label="Stock"
+                value={formData.stock}
+                error={errors.stock}
+                onChange={handleChange}
+                disabled={isSubmitting}
+              /> */}
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-gray-300 mb-1.5 font-medium text-sm">Categoría</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <TagIcon size={18} className="text-orange-400" />
+                </div>
+                <select
+                  name="categoriaId"
+                  value={formData.categoriaId}
+                  onChange={handleChange}
+                  className={`w-full bg-gray-800 text-white border ${
+                    errors.categoriaId ? "border-red-500" : "border-gray-700"
+                  } rounded-lg pl-10 p-2.5`}
+                  disabled={isSubmitting || loadingCategorias}
+                >
+                  <option value="">Seleccionar categoría</option>
+                  {categorias.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {errors.categoriaId && <p className="mt-1 text-sm text-red-500">{errors.categoriaId}</p>}
+              {loadingCategorias && <p className="mt-1 text-sm text-gray-400">Cargando categorías...</p>}
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-gray-300 mb-1.5 font-medium text-sm">Imagen</label>
+              <div className="flex items-center space-x-4">
+                <div className="relative w-24 h-24 bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
+                  {imagePreview ? (
+                    <img
+                      src={imagePreview || "/placeholder.svg"}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-500">
+                      <ImageIcon size={32} />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-500 file:text-white hover:file:bg-orange-600 transition-colors"
+                    disabled={isSubmitting}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Formatos: JPG, PNG, GIF</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors border border-gray-700"
+                disabled={isSubmitting}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className={`px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2 border border-orange-500 ${
+                  isSubmitting ? "opacity-70 cursor-not-allowed" : ""
+                }`}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+                    Guardando...
+                  </>
+                ) : (
+                  <>
+                    <Save size={16} />
+                    Guardar
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   )
 }
