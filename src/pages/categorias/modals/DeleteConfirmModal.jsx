@@ -6,9 +6,8 @@ const DeleteConfirmModal = ({ item, onConfirm, onCancel, itemName = "item", item
       <div className="bg-gray-900 p-6 rounded-xl shadow-2xl w-96 border-2 border-orange-500 animate-fade-in">
         <h3 className="text-xl font-bold text-white mb-4">Confirmar eliminación</h3>
         <p className="text-gray-300 mb-6">
-          ¿Estás seguro de que deseas eliminar {itemName} {" "}
-          <span className="font-semibold text-orange-400">{item?.[itemField]}</span>? Esta acción no se puede
-          deshacer.
+          ¿Estás seguro de que deseas eliminar {itemName}{" "}
+          <span className="font-semibold text-orange-400">{item?.[itemField]}</span>? Esta acción no se puede deshacer.
         </p>
         <div className="flex justify-end space-x-3">
           <button

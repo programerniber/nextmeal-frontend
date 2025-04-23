@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, Save, Tag as TagIcon, Image as ImageIcon } from "lucide-react"
+import { X, Save, TagIcon, ImageIcon } from "lucide-react"
 import FormField from "../componentes/form/FormField"
 import { createCategoria, updateCategoria, fetchCategorias } from "../api/categoriaService"
 
@@ -9,8 +9,8 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
   const initialFormData = {
     nombre: "",
     descripcion: "",
-    // imagenUrl: "",
-    estado: true,
+    imagenUrl: "",
+    estado: "activo", // Por defecto siempre activo
   }
 
   // Estados para el fetching de categorías existentes
@@ -23,6 +23,7 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState("")
    const [imagePreview] = useState("")
+  const [imageFile, setImageFile] = useState(null)
 
   // Función para cargar categorías existentes
   const loadExistingCategorias = async () => {
@@ -30,7 +31,8 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
       setLoadingCategorias(true)
       setFetchError(null)
       const data = await fetchCategorias()
-      setExistingCategorias(data || [])
+      console.log(categoria)
+      setExistingCategorias(data.data)
     } catch (error) {
       console.error("Error al cargar categorías:", error)
       setFetchError(error.message || "Error al cargar categorías existentes")
@@ -47,12 +49,13 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
     // Inicializar formulario con datos de la categoría si existe
     if (categoria) {
       setFormData({
+        id: categoria.id || null,
         nombre: categoria.nombre || "",
         descripcion: categoria.descripcion || "",
-        // imagenUrl: categoria.imagenUrl || "",
-        estado: categoria.estado || true,
+        imagenUrl: categoria.imagenUrl || "",
+        estado: categoria.estado || "activo",
       })
-      // if (categoria.imagenUrl) setImagePreview(categoria.imagenUrl)
+      if (categoria.imagenUrl) setImagePreview(categoria.imagenUrl)
     }
   }, [categoria])
 
@@ -60,20 +63,20 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }))
-    loadExistingCategorias()
   }
 
-  // const handleImageChange = (e) => {
-  //   const file = e.target.files[0]
-  //   if (file) {
-  //     const reader = new FileReader()
-  //     reader.onloadend = () => {
-  //       setImagePreview(reader.result)
-  //       setFormData((prev) => ({ ...prev, imagenUrl: reader.result }))
-  //     }
-  //     reader.readAsDataURL(file)
-  //   }
-  // }
+  const handleImageChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      setImageFile(file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setImagePreview(reader.result)
+        setFormData((prev) => ({ ...prev, imagenUrl: reader.result }))
+      }
+      reader.readAsDataURL(file)
+    }
+  }
 
   const validateForm = () => {
     const newErrors = {}
@@ -82,9 +85,7 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
       newErrors.nombre = "El nombre es obligatorio"
     } else if (
       existingCategorias.some(
-        (cat) =>
-          cat.nombre.toLowerCase() === formData.nombre.toLowerCase() &&
-          (!categoria || cat.id !== categoria.id)
+        (cat) => cat.nombre.toLowerCase() === formData.nombre.toLowerCase() && (!categoria || cat.id !== categoria.id),
       )
     ) {
       newErrors.nombre = "Ya existe una categoría con este nombre"
@@ -92,14 +93,6 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
-  }
-
-  const handleToggleStatus = (e) => {
-    const { name, value } = e.target
-    const estado = value=="Activo"?true:false
-    setFormData((prev) => ({ ...prev, [name]: estado }))
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }))
-    loadExistingCategorias()
   }
 
   const handleSubmit = async (e) => {
@@ -113,16 +106,25 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
     console.log("Datos enviados:", formData)
 
     try {
-      if (categoria?.id) {
-        await updateCategoria(categoria?.id, formData)
-        console.log("Datos actualizando",formData, "ID: ",categoria.id);
-        
+      // Preparar los datos para enviar
+      const dataToSend = new FormData()
+      dataToSend.append("nombre", formData.nombre)
+      dataToSend.append("descripcion", formData.descripcion)
+      dataToSend.append("estado", formData.estado)
+
+      // Agregar la imagen si existe
+      if (formData.imagenUrl != "") {
+        dataToSend.append("imagen", imageFile)
+      }
+      console.log("categoria:",categoria,"DataToSend: ",dataToSend)
+      if (categoria && categoria.id) {
+        await updateCategoria(categoria.id, formData)
       } else {
+        console.log("creando")
         await createCategoria(formData)
         
       }
       onSave()
-
     } catch (error) {
       console.error("Error al guardar categoría:", error)
       setSubmitError(error.message || "Error al guardar la categoría")
@@ -153,9 +155,7 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
         <div className="p-4">
           {/* Mostrar error de carga de categorías */}
           {fetchError && (
-            <div className="bg-yellow-900/20 text-yellow-500 p-3 rounded-lg mb-4 text-sm">
-              {fetchError}
-            </div>
+            <div className="bg-yellow-900/20 text-yellow-500 p-3 rounded-lg mb-4 text-sm">{fetchError}</div>
           )}
 
           {/* Mostrar error de submit */}
@@ -176,24 +176,9 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
               icon={<TagIcon size={18} className="text-orange-400" />}
               disabled={loadingCategorias}
             />
-            <div className="mb-4">
-              <label className="block text-gray-300 mb-1.5 font-medium text-sm">
-                Estado
-              </label>
-              <select
-                name="estado"
-                value={formData.estado?"Activo":"Inactivo"}
-                onChange={handleToggleStatus}
-                className="w-full bg-gray-800 text-white border border-gray-700 rounded-lg p-2"
-                disabled={loadingCategorias || isSubmitting}
-              >
-                <option value="Activo">Activo</option>
-                <option value="Inactivo">Inactivo</option>
-              </select>
-            </div>
 
             <FormField
-              type="text"
+              type="textarea"
               name="descripcion"
               label="Descripción (opcional)"
               value={formData.descripcion}
@@ -201,15 +186,13 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
               disabled={loadingCategorias}
             />
 
-
-
             <div className="mb-4">
               <label className="block text-gray-300 mb-1.5 font-medium text-sm">Imagen</label>
               <div className="flex items-center space-x-4">
                 <div className="relative w-24 h-24 bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
                   {imagePreview ? (
                     <img
-                      src={imagePreview}
+                      src={imagePreview || "/placeholder.svg"}
                       alt="Preview"
                       className="w-full h-full object-cover"
                     />
@@ -223,7 +206,7 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
                   <input
                     type="file"
                     accept="image/*"
-                    // onChange={handleImageChange}
+                    onChange={handleImageChange}
                     className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-500 file:text-white hover:file:bg-orange-600 transition-colors"
                     disabled={loadingCategorias || isSubmitting}
                   />
@@ -243,8 +226,9 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
               </button>
               <button
                 type="submit"
-                className={`px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2 border border-orange-500 ${isSubmitting || loadingCategorias ? "opacity-70 cursor-not-allowed" : ""
-                  }`}
+                className={`px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2 border border-orange-500 ${
+                  isSubmitting || loadingCategorias ? "opacity-70 cursor-not-allowed" : ""
+                }`}
                 disabled={isSubmitting || loadingCategorias}
               >
                 {isSubmitting ? (

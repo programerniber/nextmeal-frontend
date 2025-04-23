@@ -1,98 +1,57 @@
+"use client"
 
-// src/components/layout/navbar.jsx
-import { useState, useEffect } from "react";
-import { Bell, LogOut, Settings, User } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import authService from "../../services/authService";
+import { useState } from "react"
+import { Link } from "react-router-dom"
+import { Bell, User, LogOut } from "lucide-react"
+import { useAuth } from "../../pages/usuarios/context/AuthContext"
 
+const Navbar = () => {
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const { user, signout } = useAuth()
 
-function Navbar() {
-  const [userMenu, setUserMenu] = useState(false);
-  const [userName, setUserName] = useState("");
-  const [userRole, setUserRole] = useState("");
-  const navigate = useNavigate();
+  const toggleProfile = () => {
+    setIsProfileOpen(!isProfileOpen)
+  }
 
-  useEffect(() => {
-    const user = authService.getCurrentUser();
-    if (user) {
-      // Obtener solo el nombre del email (antes del @)
-      const emailName = user.email ? user.email.split('@')[0] : '';
-      setUserName(emailName);
-
-      // Formatear rol para mostrar (primera letra mayúscula)
-      const formattedRole = user.role
-        ? user.role.charAt(0).toUpperCase() + user.role.slice(1)
-        : '';
-      setUserRole(formattedRole);
-    }
-  }, []);
-
-  const handleLogout = () => {
-    authService.logout();
-    navigate("/login");
-  };
+  const handleLogout = async () => {
+    await signout()
+  }
 
   return (
-    <header className="bg-white shadow-md fixed top-0 right-0 left-0 z-10">
-      <div className="flex justify-between items-center px-4 py-3">
+    <nav className="fixed top-0 left-0 right-0 z-10 bg-gray-900 shadow-md px-4 py-2">
+      <div className="flex justify-between items-center">
         <div className="flex items-center">
-          <h1 className="text-xl font-semibold text-gray-800">
-            Sistema de Gestión
-          </h1>
+          <h1 className="text-white text-xl font-bold ml-4">Sistema de Gestión</h1>
         </div>
 
         <div className="flex items-center space-x-4">
-          {/* Notificaciones */}
-          <button className="relative p-2 text-gray-500 hover:text-orange-500 hover:bg-orange-50 rounded-full transition-colors">
+          <button className="text-gray-300 hover:text-white">
             <Bell size={20} />
-            <span className="absolute top-1 right-1 bg-red-500 rounded-full w-2 h-2"></span>
           </button>
 
-          {/* Menú de usuario */}
           <div className="relative">
             <button
-              onClick={() => setUserMenu(!userMenu)}
-              className="flex items-center space-x-2 p-2 rounded-full hover:bg-gray-100 transition-colors"
-              aria-expanded={userMenu}
-              aria-haspopup="true"
+              onClick={toggleProfile}
+              className="flex items-center text-gray-300 hover:text-white focus:outline-none"
             >
-              <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-white font-medium">
-                {userName.charAt(0).toUpperCase()}
+              <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
+                <User size={18} />
               </div>
-              <div className="hidden md:block text-left">
-                <p className="text-sm font-medium text-gray-700">{userName}</p>
-                <p className="text-xs text-gray-500">{userRole}</p>
-              </div>
+              <span className="ml-2 hidden md:block">{user?.nombre || "Usuario"}</span>
             </button>
 
-            {/* Menú desplegable */}
-            {userMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-10 border border-gray-200">
-                <button
-                  onClick={() => {
-                    setUserMenu(false);
-                    navigate("/perfil");
-                  } }
-                  className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 w-full text-left"
-                >
-                  <User size={16} className="mr-2" />
+            {isProfileOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg py-1 z-20">
+                <div className="px-4 py-2 text-sm text-gray-300 border-b border-gray-700">
+                  <p className="font-semibold">{user?.nombre}</p>
+                  <p className="text-xs">{user?.email}</p>
+                </div>
+                <Link to="/perfil" className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">
                   Mi Perfil
-                </button>
-                <button
-                  onClick={() => {
-                    setUserMenu(false);
-                    navigate("/configuracion");
-                  } }
-                  className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 w-full text-left"
-                >
-                  <Settings size={16} className="mr-2" />
-                  Configuración
-                </button>
-                <hr className="my-1 border-gray-200" />
+                </Link>
                 <button
                   onClick={handleLogout}
-                  className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left"
-                  data-testid="logout-button"
+                  className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 flex items-center"
                 >
                   <LogOut size={16} className="mr-2" />
                   Cerrar Sesión
@@ -102,8 +61,8 @@ function Navbar() {
           </div>
         </div>
       </div>
-    </header>
-  );
+    </nav>
+  )
 }
 
-export default Navbar;
+export default Navbar

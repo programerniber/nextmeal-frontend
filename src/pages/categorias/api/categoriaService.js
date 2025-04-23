@@ -6,7 +6,7 @@ const VITE_API_URL = "http://localhost:3000/api"
 export const createCategoria = async (categoryData) => {
   try {
     const res = await axios.post(`${VITE_API_URL}/categoria`, categoryData)
-    return res.data.data
+    return res.data
   } catch (error) {
     if (error.response?.data?.errores) {
       console.error("Errores del backend:", error.response.data.errores)
@@ -21,7 +21,7 @@ export const createCategoria = async (categoryData) => {
       console.error("Mensaje de error del backend:", error.response.data.mensaje)
       error.message = error.response.data.mensaje
     } else {
-      console.error("Error al crear categoría:", error.message)
+      console.error("Error al crear categoria:", error.message)
     }
     throw error
   }
@@ -31,9 +31,10 @@ export const createCategoria = async (categoryData) => {
 export const fetchCategorias = async () => {
   try {
     const res = await axios.get(`${VITE_API_URL}/categoria`)
-    return res.data.data
+
+    return res.data
   } catch (error) {
-    console.error("Error al obtener categorías", error)
+    console.error("Error al obtener categorias", error)
     throw error
   }
 }
@@ -42,9 +43,17 @@ export const fetchCategorias = async () => {
 export const fetchCategoriaById = async (id) => {
   try {
     const res = await axios.get(`${VITE_API_URL}/categoria/${id}`)
-    return res.data.data
+
+    // Verificar la estructura de la respuesta
+    if (res.data && res.data.data) {
+      return res.data.data
+    } else if (res.data) {
+      return res.data
+    } else {
+      return null
+    }
   } catch (error) {
-    console.error("Error al obtener categoría por ID", error)
+    console.error("Error al obtener categoria por ID", error)
     if (error.response?.data?.mensaje) {
       error.message = error.response.data.mensaje
     }
@@ -56,9 +65,17 @@ export const fetchCategoriaById = async (id) => {
 export const updateCategoria = async (id, categoryData) => {
   try {
     const res = await axios.put(`${VITE_API_URL}/categoria/${id}`, categoryData)
-    return res.data.data
+
+    // Verificar la estructura de la respuesta
+    if (res.data && res.data.data) {
+      return res.data.data
+    } else if (res.data) {
+      return res.data
+    } else {
+      return {}
+    }
   } catch (error) {
-    console.error("Error al actualizar categoría", error)
+    console.error("Error al actualizar categoria", error)
     if (error.response?.data?.mensaje) {
       error.message = error.response.data.mensaje
     }
@@ -74,7 +91,7 @@ export const deleteCategoria = async (id) => {
     console.log("Categoría eliminada:", res.data.message || res.data)
     return res.data
   } catch (error) {
-    console.error("Error al eliminar categoría", error)
+    console.error("Error al eliminar categoria", error)
     if (error.response?.data?.mensaje) {
       error.message = error.response.data.mensaje
     }
@@ -85,17 +102,16 @@ export const deleteCategoria = async (id) => {
 // ✅ Cambiar estado de la categoría (PATCH)
 export const toggleCategoriaEstado = async (id, estadoActual) => {
   try {
-    const nuevoEstado = estadoActual === "activo" ? "inactivo" : "activo"
-    console.log(`Cambiando estado de categoría ${id} de ${estadoActual} a ${nuevoEstado}`)
+    // const nuevoEstado = estadoActual === "activo" ? "inactivo" : "activo"
+    // console.log(`Cambiando estado de la categoría ${id} de ${estadoActual} a ${nuevoEstado}`)
 
-    const res = await axios.patch(`${VITE_API_URL}/categoria/${id}/estado`, {
-      estado: nuevoEstado,
+    const res = await axios.put(`${VITE_API_URL}/categoria/${id}`, {
+      estado: !estadoActual,
     })
 
-    console.log("Estado de categoría actualizado:", res.data.data)
-    return res.data.data
+    return res.data
   } catch (error) {
-    console.error("Error al cambiar estado de categoría", error)
+    console.error("Error al cambiar estado de la categoría", error)
     if (error.response?.data?.mensaje) {
       error.message = error.response.data.mensaje
     }

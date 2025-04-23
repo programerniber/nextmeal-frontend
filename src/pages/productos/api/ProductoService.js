@@ -1,65 +1,104 @@
-// src/pages/productos/api/ProductoService.js
-import axios from "axios";
+import axios from "axios"
 
-const VITE_API_URL = "http://localhost:3000/api";
+const VITE_API_URL = "http://localhost:3000/api"
 
-// ✅ Obtener todos los productos
+// ✅ Crear producto (POST)
+export const createProducto = async (productoData) => {
+  try {
+    const res = await axios.post(`${VITE_API_URL}/productos`, productoData)
+    return res.data.data
+  } catch (error) {
+    if (error.response?.data?.errores) {
+      console.error("Errores del backend:", error.response.data.errores)
+      error.response.data.errores.forEach((err, index) => {
+        console.error(`Error ${index + 1}:`, err)
+      })
+      const errorMessage = error.response.data.errores
+        .map((err) => (typeof err === "string" ? err : err.mensaje || JSON.stringify(err)))
+        .join(", ")
+      error.message = errorMessage || error.message
+    } else if (error.response?.data?.mensaje) {
+      console.error("Mensaje de error del backend:", error.response.data.mensaje)
+      error.message = error.response.data.mensaje
+    } else {
+      console.error("Error al crear producto:", error.message)
+    }
+    throw error
+  }
+}
+
+// ✅ Obtener todos los productos (GET)
 export const fetchProductos = async () => {
   try {
-    const response = await axios.get(`${VITE_API_URL}/productos`);
-    return response.data;
+    const res = await axios.get(`${VITE_API_URL}/productos`)
+    return res.data.data
   } catch (error) {
-    console.error("Error al obtener productos:", error);
-    throw error;
+    console.error("Error al obtener productos", error)
+    throw error
   }
-};
+}
 
-// ✅ Obtener todas las categorías (para el formulario de productos)
-export const fetchCategorias = async () => {
+// ✅ Obtener producto por ID (GET)
+export const fetchProductoById = async (id) => {
   try {
-    const response = await axios.get(`${VITE_API_URL}/categoria`);
-    return response.data;
+    const res = await axios.get(`${VITE_API_URL}/productos/${id}`)
+    return res.data.data
   } catch (error) {
-    console.error("Error al obtener categorías:", error);
-    throw error;
+    console.error("Error al obtener producto por ID", error)
+    if (error.response?.data?.mensaje) {
+      error.message = error.response.data.mensaje
+    }
+    throw error
   }
-};
+}
 
-// ✅ Crear producto
-export const crearProducto = async (productoData) => {
+// ✅ Actualizar producto por ID (PUT)
+export const updateProducto = async (id, productoData) => {
   try {
-    const response = await axios.post(`${VITE_API_URL}/productos`, productoData);
-    return response.data;
+    const res = await axios.put(`${VITE_API_URL}/productos/${id}`, productoData)
+    return res.data.data
   } catch (error) {
-    console.error("Error al crear producto:", error);
-    throw error;
+    console.error("Error al actualizar producto", error)
+    if (error.response?.data?.mensaje) {
+      error.message = error.response.data.mensaje
+    }
+    throw error
   }
-};
+}
 
-// ✅ Actualizar producto
-export const actualizarProducto = async (id, productoData) => {
-  try {
-    const response = await axios.put(`${VITE_API_URL}/productos/${id}`, productoData);
-    return response.data;
-  } catch (error) {
-    console.error("Error al actualizar producto:", error);
-    throw error;
-  }
-};
-
-// ✅ Eliminar producto
+// ✅ Eliminar producto por ID (DELETE)
 export const deleteProducto = async (id) => {
   try {
-    console.log(`Enviando solicitud DELETE a ${VITE_API_URL}/productos/${id}`);
-    const response = await axios.delete(`${VITE_API_URL}/productos/${id}`);
-    console.log("Respuesta recibida:", response.data);
-    return response.data;
+    console.log(`Eliminando producto con ID: ${id}`)
+    const res = await axios.delete(`${VITE_API_URL}/productos/${id}`)
+    console.log("Producto eliminado:", res.data.message || res.data)
+    return res.data
   } catch (error) {
-    console.error("Error completo:", error);
-    if (error.response) {
-      console.error("Datos de respuesta:", error.response.data);
-      console.error("Estado:", error.response.status);
+    console.error("Error al eliminar producto", error)
+    if (error.response?.data?.mensaje) {
+      error.message = error.response.data.mensaje
     }
-    throw error;
+    throw error
   }
-};
+}
+
+// ✅ Cambiar estado del producto (PATCH)
+export const toggleProductoEstado = async (id, estadoActual) => {
+  try {
+    const nuevoEstado = estadoActual === "activo" ? "inactivo" : "activo"
+    console.log(`Cambiando estado del producto ${id} de ${estadoActual} a ${nuevoEstado}`)
+
+    const res = await axios.patch(`${VITE_API_URL}/productos/${id}/estado`, {
+      estado: nuevoEstado,
+    })
+
+    console.log("Estado del producto actualizado:", res.data.data)
+    return res.data.data
+  } catch (error) {
+    console.error("Error al cambiar estado del producto", error)
+    if (error.response?.data?.mensaje) {
+      error.message = error.response.data.mensaje
+    }
+    throw error
+  }
+}

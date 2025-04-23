@@ -1,11 +1,9 @@
-"use client"
 
 import { useState, useEffect } from "react"
 import UserList from "./components/UserList"
 import UserForm from "./components/UserForm"
 import { fetchUsuarios } from "./api/usuarioService.js"
 import { PlusCircle, Users, RefreshCw } from "lucide-react"
-import useAuth from "./hooks/useAuth.jsx"
 
 const Usuario = () => {
   const [usuarios, setUsuarios] = useState([])
@@ -13,7 +11,6 @@ const Usuario = () => {
   const [error, setError] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [currentUsuario, setCurrentUsuario] = useState(null)
-  const { user } = useAuth()
 
   // Cargar usuarios al montar el componente
   useEffect(() => {
@@ -57,7 +54,7 @@ const Usuario = () => {
   }
 
   // Verificar si el usuario tiene permisos de administrador
-  const isAdmin = user?.id_rol === 1 // Asumiendo que 1 es el ID del rol administrador
+  const isAdmin = Users?.id_rol === 1 // Asumiendo que 1 es el ID del rol administrador
 
   return (
     <div className="container mx-auto px-4 py-6">
@@ -72,7 +69,7 @@ const Usuario = () => {
               <p className="text-gray-400 text-sm">Administra los usuarios del sistema</p>
             </div>
           </div>
-          
+
           {isAdmin && (
             <button
               onClick={handleCreateClick}
@@ -137,10 +134,10 @@ const Usuario = () => {
       </div>
 
       {showForm && (
-        <UserForm 
-          usuario={currentUsuario} 
-          onClose={handleFormClose} 
-          onSave={handleUsuarioUpdated} 
+        <UserForm
+          usuario={currentUsuario}
+          onClose={handleFormClose}
+          onSave={handleUsuarioUpdated}
         />
       )}
     </div>
