@@ -103,7 +103,7 @@ function AppContent() {
             <Route
               path="/usuario"
               element={
-                <ProtectedRoute requiredRole="1">
+                <ProtectedRoute requiredRole={1}>
                   {" "}
                   {/* Asumiendo que 1 es el ID del rol admin */}
                   <Usuario />
@@ -137,7 +137,7 @@ function AppContent() {
             <Route
               path="/configuracion"
               element={
-                <ProtectedRoute requiredRole="1">
+                <ProtectedRoute requiredRole={1}>
                   {" "}
                   {/* Asumiendo que 1 es el ID del rol admin */}
                   <Configuracion />

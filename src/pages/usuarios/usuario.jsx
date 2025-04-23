@@ -54,7 +54,7 @@ const Usuario = () => {
   }
 
   // Verificar si el usuario tiene permisos de administrador
-  const isAdmin = user?.id_rol === 1 // Asumiendo que 1 es el ID del rol administrador
+  const isAdmin = Users?.id_rol === 1 // Asumiendo que 1 es el ID del rol administrador
 
   return (
     <div className="container mx-auto px-4 py-6">
@@ -69,7 +69,7 @@ const Usuario = () => {
               <p className="text-gray-400 text-sm">Administra los usuarios del sistema</p>
             </div>
           </div>
-          
+
           {isAdmin && (
             <button
               onClick={handleCreateClick}
@@ -134,10 +134,10 @@ const Usuario = () => {
       </div>
 
       {showForm && (
-        <UserForm 
-          usuario={currentUsuario} 
-          onClose={handleFormClose} 
-          onSave={handleUsuarioUpdated} 
+        <UserForm
+          usuario={currentUsuario}
+          onClose={handleFormClose}
+          onSave={handleUsuarioUpdated}
         />
       )}
     </div>
