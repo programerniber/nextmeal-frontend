@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, ShoppingBag, Plus, Minus } from "lucide-react"
+import { X, ShoppingBag, Plus, Minus, Trash2 } from "lucide-react"
 import { createPedido, updatePedido, fetchClientesPedidos, fetchProductos } from "../api/pedidoservice.js"
 
 import FormField from "../../clientes/components/form/FormField.jsx"
@@ -10,9 +10,8 @@ import SelectField from "../../clientes/components/form/SelectField.jsx"
 const PedidoForm = ({ pedido, onClose, onSave }) => {
   const initialFormData = {
     id_cliente: "",
-    id_producto: "",
-    cantidad: 1,
     direccion_envio: "",
+    productos: [], // Array para almacenar múltiples productos
   }
 
   const [formData, setFormData] = useState(initialFormData)
@@ -22,7 +21,8 @@ const PedidoForm = ({ pedido, onClose, onSave }) => {
   const [clientes, setClientes] = useState([])
   const [productos, setProductos] = useState([])
   const [loading, setLoading] = useState(true)
-  const [selectedProducto, setSelectedProducto] = useState(null)
+  const [currentProducto, setCurrentProducto] = useState("")
+  const [currentCantidad, setCurrentCantidad] = useState(1)
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -34,24 +34,21 @@ const PedidoForm = ({ pedido, onClose, onSave }) => {
         setProductos(productosData)
       } catch (error) {
         console.error("Error al cargar datos:", error)
-
+        
         // Añadir más información de diagnóstico
         if (error.response) {
-          // La solicitud fue realizada y el servidor respondió con un código de estado
           console.error("Error de respuesta:", {
             status: error.response.status,
             data: error.response.data,
             headers: error.response.headers,
           })
         } else if (error.request) {
-          // La solicitud fue realizada pero no se recibió respuesta
           console.error("Error de solicitud sin respuesta:", error.request)
         } else {
-          // Algo sucedió durante la configuración de la solicitud
           console.error("Error de configuración:", error.message)
         }
 
-        setSubmitError("Error al cargar datos: ")
+        setSubmitError("Error al cargar datos: " + (error.message || "Error desconocido"))
       } finally {
         setLoading(false)
       }
@@ -59,57 +56,132 @@ const PedidoForm = ({ pedido, onClose, onSave }) => {
 
     loadData()
   }, [])
-  // Si hay un pedido para editar, cargar sus datos
+
+
   useEffect(() => {
-    if (pedido) {
+    if (pedido && productos.length > 0) {
+      // Acceder directamente a PedidoProductos sin sub-objeto
+      const pedidoProductos = pedido.Productos?.map(producto => {
+        
+        return {
+          producto_id: producto.id,
+          cantidad: producto.PedidoProducto?.cantidad || 1,
+          precio_unitario: producto.PedidoProducto?.precio_unitario || producto.precio,
+          subtotal: (producto.PedidoProducto?.cantidad || 1) * (producto.PedidoProducto?.precio_unitario || producto.precio),
+          producto: producto,
+          id: producto.PedidoProducto?.id // Añadir el ID de la relación
+        };
+      }) || [];
+  
       setFormData({
-        id_cliente: pedido.id_cliente.toString(),
-        id_producto: pedido.id_producto.toString(),
-        cantidad: pedido.cantidad,
+        id_cliente: pedido.id_cliente?.toString(),
         direccion_envio: pedido.direccion_envio || "",
-      })
-
-      // Establecer el producto seleccionado
-      const producto = productos.find((p) => p.id === pedido.id_producto)
-      if (producto) {
-        setSelectedProducto(producto)
-      }
+        productos: pedidoProductos
+      });
     }
-  }, [pedido, productos])
-
-  // Actualizar producto seleccionado cuando cambia el id_producto
-  useEffect(() => {
-    if (formData.id_producto) {
-      const producto = productos.find((p) => p.id.toString() === formData.id_producto)
-      setSelectedProducto(producto || null)
-    } else {
-      setSelectedProducto(null)
-    }
-  }, [formData.id_producto, productos])
+  }, [pedido, productos]);
 
   const handleChange = (e) => {
     const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
+    setFormData(prev => ({ ...prev, [name]: value }))
 
     // Limpiar error del campo cuando cambia
     if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }))
+      setErrors(prev => ({ ...prev, [name]: "" }))
     }
   }
 
-  const handleCantidadChange = (increment) => {
-    setFormData((prev) => {
-      const newCantidad = Math.max(1, prev.cantidad + increment)
-      return { ...prev, cantidad: newCantidad }
-    })
+  const handleProductoChange = (e) => {
+    setCurrentProducto(e.target.value)
+  }
+
+  const handleCantidadChange = (valor) => {
+    setCurrentCantidad(Math.max(1, valor))
+  }
+
+  // Agregar producto al pedido
+  const agregarProducto = () => {
+    if (!currentProducto) {
+      setErrors(prev => ({ ...prev, producto: "Seleccione un producto" }))
+      return
+    }
+
+    const productoSeleccionado = productos.find(p => p.id.toString() === currentProducto)
+    if (!productoSeleccionado) return
+
+    // Verificar si el producto ya está en la lista
+    const productoExistente = formData.productos.find(p => p.producto_id.toString() === currentProducto)
+    
+    if (productoExistente) {
+      // Actualizar cantidad si ya existe
+      const nuevosProductos = formData.productos.map(p => 
+        p.producto_id.toString() === currentProducto 
+          ? { 
+              ...p, 
+              cantidad: p.cantidad + currentCantidad,
+              subtotal: (p.cantidad + currentCantidad) * p.precio_unitario
+            }
+          : p
+      )
+      
+      setFormData(prev => ({
+        ...prev,
+        productos: nuevosProductos
+      }))
+    } else {
+      // Agregar nuevo producto
+      const nuevoProducto = {
+        producto_id: parseInt(currentProducto),
+        cantidad: currentCantidad,
+        precio_unitario: productoSeleccionado.precio,
+        subtotal: productoSeleccionado.precio * currentCantidad,
+        producto: productoSeleccionado // Incluir información del producto para mostrar
+      }
+      
+      setFormData(prev => ({
+        ...prev,
+        productos: [...prev.productos, nuevoProducto]
+      }))
+    }
+    
+    // Resetear selección
+    setCurrentProducto("")
+    setCurrentCantidad(1)
+    
+    // Limpiar error si existe
+    if (errors.producto) {
+      setErrors(prev => ({ ...prev, producto: "" }))
+    }
+  }
+
+  // Eliminar producto del pedido
+  const eliminarProducto = (index) => {
+    const nuevosProductos = [...formData.productos]
+    nuevosProductos.splice(index, 1)
+    setFormData(prev => ({ ...prev, productos: nuevosProductos }))
+  }
+
+  // Actualizar cantidad de un producto ya agregado
+  const actualizarCantidad = (index, nuevaCantidad) => {
+    if (nuevaCantidad < 1) return
+    
+    const nuevosProductos = [...formData.productos]
+    nuevosProductos[index].cantidad = nuevaCantidad
+    nuevosProductos[index].subtotal = nuevaCantidad * nuevosProductos[index].precio_unitario
+    
+    setFormData(prev => ({ ...prev, productos: nuevosProductos }))
+  }
+
+  // Calcular el total del pedido
+  const calcularTotal = () => {
+    return formData.productos.reduce((total, item) => total + item.subtotal, 0)
   }
 
   // Validaciones de formulario
   const validations = {
     id_cliente: (value) => (!value ? "El cliente es obligatorio" : ""),
-    id_producto: (value) => (!value ? "El producto es obligatorio" : ""),
-    cantidad: (value) => (value < 1 ? "La cantidad debe ser al menos 1" : ""),
     direccion_envio: (value) => (!value.trim() ? "La dirección de envío es obligatoria" : ""),
+    productos: (array) => (array.length === 0 ? "Debe agregar al menos un producto" : "")
   }
 
   const validateForm = () => {
@@ -124,7 +196,7 @@ const PedidoForm = ({ pedido, onClose, onSave }) => {
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
-
+  
   const handleSubmit = async (e) => {
     e.preventDefault()
 
@@ -132,15 +204,38 @@ const PedidoForm = ({ pedido, onClose, onSave }) => {
 
     setIsSubmitting(true)
     setSubmitError("")
-
+    
     try {
+      // Preparar datos para enviar
+    const pedidoData = {
+  id_cliente: parseInt(formData.id_cliente),
+  direccion_envio: formData.direccion_envio,
+  total: calcularTotal(),
+  productos: formData.productos.map(item => {
+    const productoData = {
+      producto_id: item.producto_id,
+      cantidad: item.cantidad,
+      precio_unitario: item.precio_unitario
+    }
+    
+    // Si estamos editando un pedido y el producto tiene un id de relación, incluirlo
+    if (pedido && item.id) {
+      productoData.id = item.id
+    }
+    
+    return productoData
+  })
+}
+      
+      let respuesta;
       if (pedido) {
-        await updatePedido(pedido.id, formData)
+        respuesta = await updatePedido(pedido.id, pedidoData);
       } else {
-        await createPedido(formData)
+        respuesta = await createPedido(pedidoData);
       }
 
-      onSave()
+      // Pasar la respuesta al componente padre para que actualice la lista correctamente
+      onSave(respuesta);
     } catch (error) {
       console.error("Error al guardar pedido:", error)
       setSubmitError(error.message || "Error al guardar el pedido")
@@ -149,11 +244,9 @@ const PedidoForm = ({ pedido, onClose, onSave }) => {
     }
   }
 
-  // Calcular el total estimado
-  const calcularTotal = () => {
-    if (!selectedProducto) return 0
-    const total = selectedProducto.precio * formData.cantidad
-    return total.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")
+  // Formato de moneda en pesos colombianos
+  const formatearPesosColombianos = (valor) => {
+    return valor.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")
   }
 
   if (loading) {
@@ -170,8 +263,8 @@ const PedidoForm = ({ pedido, onClose, onSave }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-gray-900 rounded-xl shadow-2xl w-full max-w-2xl border-r-2 border-orange-500 animate-fade-in">
-        <div className="flex justify-between items-center p-6 border-b border-gray-800">
+      <div className="bg-gray-900 rounded-xl shadow-2xl w-full max-w-3xl border-r-2 border-orange-500 animate-fade-in max-h-screen overflow-auto">
+        <div className="flex justify-between items-center p-6 border-b border-gray-800 sticky top-0 bg-gray-900 z-10">
           <h2 className="text-xl font-bold text-white flex items-center">
             <ShoppingBag className="mr-2 text-orange-500" size={24} />
             {pedido ? "Editar Pedido" : "Nuevo Pedido"}
@@ -192,7 +285,7 @@ const PedidoForm = ({ pedido, onClose, onSave }) => {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             {/* Cliente */}
             <SelectField
               name="id_cliente"
@@ -219,78 +312,159 @@ const PedidoForm = ({ pedido, onClose, onSave }) => {
               error={errors.direccion_envio}
               onChange={handleChange}
             />
+          </div>
 
-            {/* Producto */}
-            <div className="md:col-span-2">
-              <SelectField
-                name="id_producto"
-                label="Producto"
-                value={formData.id_producto}
-                options={[
-                  { value: "", label: "Seleccionar producto" },
-                  ...productos.map((producto) => ({
-                    value: producto.id.toString(),
-                    label: `${producto.nombre} - $${producto.precio.toLocaleString("es-CO")}`,
-                  })),
-                ]}
-                onChange={handleChange}
-                error={errors.id_producto}
-                className={errors.id_producto ? "border-red-500" : ""}
-              />
-            </div>
-
-            {/* Detalles del producto seleccionado */}
-            {selectedProducto && (
-              <div className="md:col-span-2 bg-gray-800 p-4 rounded-lg border border-gray-700">
+          {/* Sección para agregar productos */}
+          <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 mb-6">
+            <h3 className="text-white font-medium mb-4 border-b border-gray-700 pb-2">Agregar Productos</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="md:col-span-2">
+                <SelectField
+                  name="producto"
+                  label="Producto"
+                  value={currentProducto}
+                  options={[
+                    { value: "", label: "Seleccionar producto" },
+                    ...productos
+                      .filter(p => !formData.productos.some(fp => fp.producto_id === p.id && fp.cantidad >= 10))
+                      .map((producto) => ({
+                        value: producto.id.toString(),
+                        label: `${producto.nombre} - $${producto.precio.toLocaleString("es-CO")}`,
+                      })),
+                  ]}
+                  onChange={handleProductoChange}
+                  error={errors.producto}
+                  className={errors.producto ? "border-red-500" : ""}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Cantidad</label>
                 <div className="flex items-center">
-                  <img
-                    src={selectedProducto.imagen || "/placeholder.svg"}
-                    alt={selectedProducto.nombre}
-                    className="w-16 h-16 rounded-lg object-cover mr-4"
+                  <button
+                    type="button"
+                    onClick={() => handleCantidadChange(currentCantidad - 1)}
+                    className="bg-gray-700 text-white p-2 rounded-l-lg hover:bg-gray-600 transition-colors"
+                  >
+                    <Minus size={16} />
+                  </button>
+                  <input
+                    type="number"
+                    value={currentCantidad}
+                    onChange={(e) => handleCantidadChange(parseInt(e.target.value) || 1)}
+                    className="w-full text-center bg-gray-700 text-white border-0 py-2"
+                    min="1"
                   />
-                  <div>
-                    <h4 className="text-white font-medium">{selectedProducto.nombre}</h4>
-                    <p className="text-gray-400 text-sm">{selectedProducto.categoria}</p>
-                    <p className="text-orange-400 font-bold">${selectedProducto.precio.toLocaleString("es-CO")}</p>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleCantidadChange(currentCantidad + 1)}
+                    className="bg-gray-700 text-white p-2 rounded-r-lg hover:bg-gray-600 transition-colors"
+                  >
+                    <Plus size={16} />
+                  </button>
                 </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={agregarProducto}
+                className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2"
+              >
+                <Plus size={16} />
+                Agregar Producto
+              </button>
+            </div>
+          </div>
 
-                <div className="mt-4 flex items-center justify-between">
-                  <div className="flex items-center">
-                    <button
-                      type="button"
-                      onClick={() => handleCantidadChange(-1)}
-                      className="bg-gray-700 text-white p-2 rounded-l-lg hover:bg-gray-600 transition-colors"
-                    >
-                      <Minus size={16} />
-                    </button>
-                    <input
-                      type="number"
-                      name="cantidad"
-                      value={formData.cantidad}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          cantidad: Math.max(1, Number.parseInt(e.target.value) || 1),
-                        }))
-                      }
-                      className="w-16 text-center bg-gray-700 text-white border-0 py-2"
-                      min="1"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleCantidadChange(1)}
-                      className="bg-gray-700 text-white p-2 rounded-r-lg hover:bg-gray-600 transition-colors"
-                    >
-                      <Plus size={16} />
-                    </button>
-                  </div>
-
-                  <div className="text-right">
-                    <p className="text-gray-400 text-sm">Total Estimado:</p>
-                    <p className="text-white font-bold text-lg">${calcularTotal()}</p>
-                  </div>
-                </div>
+          {/* Lista de productos agregados */}
+          <div className="mb-6">
+            <h3 className="text-white font-medium mb-3">Productos en este pedido</h3>
+            
+            {errors.productos && (
+              <div className="bg-red-900 bg-opacity-30 text-red-300 p-2 rounded mb-3 text-sm border border-red-800">
+                {errors.productos}
+              </div>
+            )}
+            
+            {formData.productos.length === 0 ? (
+              <div className="text-center py-6 text-gray-400 bg-gray-800 rounded-lg border border-gray-700">
+                No hay productos agregados al pedido
+              </div>
+            ) : (
+              <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+                <table className="min-w-full">
+                  <thead className="bg-gray-900">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-orange-500 uppercase tracking-wider">Producto</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-orange-500 uppercase tracking-wider">Cantidad</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-orange-500 uppercase tracking-wider">Precio Unit.</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-orange-500 uppercase tracking-wider">Subtotal</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-orange-500 uppercase tracking-wider">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-700">
+                    {formData.productos.map((item, index) => (
+                      <tr key={index} className="hover:bg-gray-700">
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-white">
+                          {item.producto?.nombre || "Producto no disponible"}
+                        </td>
+                        <td className="px-2 py-3 whitespace-nowrap text-center">
+                          <div className="flex items-center justify-center">
+                            <button
+                              type="button"
+                              onClick={() => actualizarCantidad(index, item.cantidad - 1)}
+                              className="bg-gray-700 text-white p-1 rounded-l hover:bg-gray-600 transition-colors"
+                            >
+                              <Minus size={14} />
+                            </button>
+                            <input
+                              type="number"
+                              value={item.cantidad}
+                              onChange={(e) => actualizarCantidad(index, parseInt(e.target.value) || 1)}
+                              className="w-12 text-center bg-gray-700 text-white border-0 py-1"
+                              min="1"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => actualizarCantidad(index, item.cantidad + 1)}
+                              className="bg-gray-700 text-white p-1 rounded-r hover:bg-gray-600 transition-colors"
+                            >
+                              <Plus size={14} />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-300">
+                          ${formatearPesosColombianos(item.precio_unitario)}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-medium text-white">
+                          ${formatearPesosColombianos(item.subtotal)}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-center">
+                          <button
+                            type="button"
+                            onClick={() => eliminarProducto(index)}
+                            className="text-red-500 hover:text-red-400 transition-colors p-1"
+                            title="Eliminar"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="bg-gray-900">
+                      <td colSpan="3" className="px-4 py-3 text-right font-medium text-white">
+                        Total del Pedido:
+                      </td>
+                      <td className="px-4 py-3 text-right font-bold text-orange-400">
+                        ${formatearPesosColombianos(calcularTotal())}
+                      </td>
+                      <td></td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             )}
           </div>

@@ -5,6 +5,7 @@ import { X, Save, User, Mail, Phone, MapPin, CheckCircle, AlertCircle } from "lu
 import { createCliente, updateCliente } from "../api/clienteService"
 import FormField from "./form/FormField"
 import SelectField from "./form/SelectField"
+import { toast } from "react-toastify" // Importar toast
 
 const ClienteForm = ({ cliente, onClose, onSave }) => {
   const initialFormData = {
@@ -156,6 +157,8 @@ const ClienteForm = ({ cliente, onClose, onSave }) => {
 
     if (!validateForm()) {
       setFormSubmitted(false)
+      // Mostrar notificación toast para errores de validación
+      toast.error("Por favor, corrige los errores en el formulario")
       return
     }
 
@@ -166,9 +169,13 @@ const ClienteForm = ({ cliente, onClose, onSave }) => {
       let savedCliente;
       if (cliente) {
         savedCliente = await updateCliente(cliente.id, formData)
+        // Toast para actualización exitosa
+        toast.success(`Cliente ${formData.nombreCompleto} actualizado exitosamente`)
       } else {
         console.log("Datos enviados:", formData)
         savedCliente = await createCliente(formData)
+        // Toast para creación exitosa
+        toast.success(`Cliente ${formData.nombreCompleto} registrado exitosamente`)
       }
 
       // Asegurar que onSave se llame con los datos actualizados del cliente
@@ -180,8 +187,10 @@ const ClienteForm = ({ cliente, onClose, onSave }) => {
       onClose();
     } catch (error) {
       console.error("Error al guardar cliente:", error)
-      // Mostrar el mensaje de error específico
-      setSubmitError(error.message || "Error al guardar el cliente")
+      // Mostrar el mensaje de error específico en un toast
+      const errorMsg = error.message || "Error al guardar el cliente"
+      toast.error(errorMsg)
+      setSubmitError(errorMsg)
       setFormSubmitted(false)
     } finally {
       setIsSubmitting(false)
@@ -192,6 +201,9 @@ const ClienteForm = ({ cliente, onClose, onSave }) => {
   const nextStep = () => {
     if (validateCurrentStep()) {
       setCurrentStep((prev) => Math.min(prev + 1, totalSteps))
+    } else {
+      // Toast para errores de validación del paso actual
+      toast.warning("Por favor, completa correctamente todos los campos")
     }
   }
 
@@ -353,7 +365,10 @@ const ClienteForm = ({ cliente, onClose, onSave }) => {
             {cliente ? "Editar Cliente" : "Registrar Cliente"}
           </h2>
           <button
-            onClick={onClose}
+            onClick={() => {
+              onClose();
+              toast.info("Operación cancelada");
+            }}
             className="text-gray-400 hover:text-white hover:rotate-90 transition-all bg-gray-800 p-1.5 rounded-full"
             title="Volver"
           >

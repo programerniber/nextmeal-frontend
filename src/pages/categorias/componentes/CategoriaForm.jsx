@@ -22,7 +22,7 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState("")
-  const [imagePreview, setImagePreview] = useState("")
+   const [imagePreview] = useState("")
 
   // Función para cargar categorías existentes
   const loadExistingCategorias = async () => {
@@ -110,13 +110,16 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
     setIsSubmitting(true)
     setSubmitError("")
 
+    console.log("Datos enviados:", formData)
+
     try {
-      if (categoria.id) {
-        await updateCategoria(categoria.id, formData)
+      if (categoria?.id) {
+        await updateCategoria(categoria?.id, formData)
         console.log("Datos actualizando",formData, "ID: ",categoria.id);
         
       } else {
         await createCategoria(formData)
+        
       }
       onSave()
 

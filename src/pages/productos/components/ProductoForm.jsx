@@ -114,11 +114,11 @@ const ProductoForm = ({ producto, onSave, onClose }) => {
 
       if (producto) {
         await actualizarProducto(producto.id, productoData)
-        console.log("DATOS QUE LLEGAN AL EDITAR",producto.id,productoData);
+        
 
       } else {
         await crearProducto(productoData)
-        console.log("DATOS QUE LLEGAN",productoData);
+        
         
       }
 

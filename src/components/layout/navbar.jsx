@@ -1,145 +1,109 @@
-"use client"
 
-import { useState, useEffect } from "react"
-import { LogOut, X, Bell, Lock, Mail, Eye, EyeOff } from "lucide-react"
-import { useSidebar } from "./sidebarUtils"
+// src/components/layout/navbar.jsx
+import { useState, useEffect } from "react";
+import { Bell, LogOut, Settings, User } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import authService from "../../services/authService";
 
 
-const Navbar = () => {
-  const { isExpanded } = useSidebar()
-  const [showLoginModal, setShowLoginModal] = useState(false)
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [time, setTime] = useState(new Date())
-  const [isPasswordVisible, setIsPasswordVisible] = useState(false)
+function Navbar() {
+  const [userMenu, setUserMenu] = useState(false);
+  const [userName, setUserName] = useState("");
+  const [userRole, setUserRole] = useState("");
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000)
-    return () => clearInterval(timer)
-  }, [])
+    const user = authService.getCurrentUser();
+    if (user) {
+      // Obtener solo el nombre del email (antes del @)
+      const emailName = user.email ? user.email.split('@')[0] : '';
+      setUserName(emailName);
 
-  const handleLogin = (e) => {
-    e.preventDefault()
-    if (email && password) {
-      try {
-        email === "admin@example.com" && password === "password"
-          ? setShowLoginModal(false)
-          : alert("Credenciales incorrectas")
-      } catch (error) {
-        console.error("Error de inicio de sesión", error)
-        alert("Error en el inicio de sesión")
-      }
+      // Formatear rol para mostrar (primera letra mayúscula)
+      const formattedRole = user.role
+        ? user.role.charAt(0).toUpperCase() + user.role.slice(1)
+        : '';
+      setUserRole(formattedRole);
     }
-  }
+  }, []);
 
-  const closeModal = () => {
-    setShowLoginModal(false)
-    setEmail("")
-    setPassword("")
-  }
-
-  const formatDateTime = (date, type) =>
-    type === "time"
-      ? date.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
-      : date.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+  const handleLogout = () => {
+    authService.logout();
+    navigate("/login");
+  };
 
   return (
-    <>
-      <nav
-        className={`
-        fixed top-0 right-0 
-        ${isExpanded ? "left-64" : "left-20"} 
-        z-30 bg-gradient-to-r from-gray-900 to-gray-800 
-        text-white shadow-2xl h-16 
-        flex items-center justify-between px-6 
-        border-b-4 border-orange-500 
-        transition-all duration-300
-      `}
-      >
-        <div className="flex items-center space-x-4">
-          <div className="text-sm">
-            <p className="font-medium">{formatDateTime(time)}</p>
-            <p className="text-orange-400 font-bold">{formatDateTime(time, "time")}</p>
-          </div>
+    <header className="bg-white shadow-md fixed top-0 right-0 left-0 z-10">
+      <div className="flex justify-between items-center px-4 py-3">
+        <div className="flex items-center">
+          <h1 className="text-xl font-semibold text-gray-800">
+            Sistema de Gestión
+          </h1>
         </div>
 
         <div className="flex items-center space-x-4">
-          <button className="relative hover:text-orange-400 transition-colors">
+          {/* Notificaciones */}
+          <button className="relative p-2 text-gray-500 hover:text-orange-500 hover:bg-orange-50 rounded-full transition-colors">
             <Bell size={20} />
-            <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
-              3
-            </span>
+            <span className="absolute top-1 right-1 bg-red-500 rounded-full w-2 h-2"></span>
           </button>
 
-          <button
-            onClick={() => setShowLoginModal(true)}
-            className="bg-orange-600 text-white p-2 rounded-full hover:bg-orange-700 transition-colors duration-300 flex items-center justify-center group"
-          >
-            <LogOut size={20} className="group-hover:rotate-180 transition-transform duration-500" />
-          </button>
-        </div>
-      </nav>
-
-      {showLoginModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded-2xl shadow-2xl w-96 relative border-4 border-orange-500 animate-bounce-in">
+          {/* Menú de usuario */}
+          <div className="relative">
             <button
-              onClick={closeModal}
-              className="absolute top-4 right-4 text-gray-600 hover:text-gray-900 hover:rotate-90 transition-all"
+              onClick={() => setUserMenu(!userMenu)}
+              className="flex items-center space-x-2 p-2 rounded-full hover:bg-gray-100 transition-colors"
+              aria-expanded={userMenu}
+              aria-haspopup="true"
             >
-              <X size={24} />
+              <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-white font-medium">
+                {userName.charAt(0).toUpperCase()}
+              </div>
+              <div className="hidden md:block text-left">
+                <p className="text-sm font-medium text-gray-700">{userName}</p>
+                <p className="text-xs text-gray-500">{userRole}</p>
+              </div>
             </button>
 
-            <div className="text-center mb-6">
-              <h2 className="text-3xl font-bold text-gray-800 mb-2">Bienvenido</h2>
-              <p className="text-gray-500">Inicia sesión en tu cuenta</p>
-            </div>
-
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="relative">
-                <Mail size={20} className="absolute left-3 top-3 text-gray-400" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  placeholder="Correo electrónico"
-                  required
-                />
-              </div>
-
-              <div className="relative">
-                <Lock size={20} className="absolute left-3 top-3 text-gray-400" />
-                <input
-                  type={isPasswordVisible ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  placeholder="Contraseña"
-                  required
-                />
+            {/* Menú desplegable */}
+            {userMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-10 border border-gray-200">
                 <button
-                  type="button"
-                  onClick={() => setIsPasswordVisible(!isPasswordVisible)}
-                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 transition-colors"
+                  onClick={() => {
+                    setUserMenu(false);
+                    navigate("/perfil");
+                  } }
+                  className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 w-full text-left"
                 >
-                  {isPasswordVisible ? <Eye size={20} /> : <EyeOff size={20} />}
+                  <User size={16} className="mr-2" />
+                  Mi Perfil
+                </button>
+                <button
+                  onClick={() => {
+                    setUserMenu(false);
+                    navigate("/configuracion");
+                  } }
+                  className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 w-full text-left"
+                >
+                  <Settings size={16} className="mr-2" />
+                  Configuración
+                </button>
+                <hr className="my-1 border-gray-200" />
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left"
+                  data-testid="logout-button"
+                >
+                  <LogOut size={16} className="mr-2" />
+                  Cerrar Sesión
                 </button>
               </div>
-
-              <button
-                type="submit"
-                className="w-full bg-orange-600 text-white py-2 rounded-lg hover:bg-orange-700 transition-colors group"
-              >
-                <span className="group-hover:tracking-wider transition-all">Iniciar Sesión</span>
-              </button>
-            </form>
+            )}
           </div>
         </div>
-      )}
-    </>
-  )
+      </div>
+    </header>
+  );
 }
 
-export default Navbar
-
+export default Navbar;
