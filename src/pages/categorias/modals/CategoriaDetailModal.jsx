@@ -1,6 +1,6 @@
 "use client"
 
-import { Edit, Image as ImageIcon } from "lucide-react"
+import { Edit, ImageIcon } from "lucide-react"
 
 const CategoriaDetailModal = ({ categoria, onClose, onEdit }) => {
   // Formatear fecha de registro (si existe)
@@ -28,19 +28,16 @@ const CategoriaDetailModal = ({ categoria, onClose, onEdit }) => {
     },
     {
       label: "Estado",
-      value: categoria.estado ? "Activo":"Inactivo",
-      className: `font-medium capitalize ${categoria.estado ? "text-green-400" : "text-red-400"}`,
+      value: categoria.estado === "activo" ? "Activo" : "Inactivo",
+      className: `font-medium capitalize ${categoria.estado === "activo" ? "text-green-400" : "text-red-400"}`,
     },
-    
   ]
 
   // Componente para cada campo de detalle
   const DetailField = ({ label, value, className, capitalize = false }) => (
     <div className="mb-3">
       <p className="text-gray-400 text-sm">{label}</p>
-      <p className={className || `text-white font-medium${capitalize ? " capitalize" : ""}`}>
-        {value}
-      </p>
+      <p className={className || `text-white font-medium${capitalize ? " capitalize" : ""}`}>{value}</p>
     </div>
   )
 
@@ -54,7 +51,7 @@ const CategoriaDetailModal = ({ categoria, onClose, onEdit }) => {
             <div className="bg-gray-800 rounded-lg h-48 flex items-center justify-center overflow-hidden border border-gray-700">
               {categoria.imagenUrl ? (
                 <img
-                  src={categoria.imagenUrl}
+                  src={categoria.imagenUrl || "/placeholder.svg"}
                   alt={categoria.nombre}
                   className="w-full h-full object-cover"
                 />
