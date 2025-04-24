@@ -24,6 +24,8 @@ const ProductoForm = ({ producto, onClose, onSave }) => {
   const [submitError, setSubmitError] = useState("")
   const [imagePreview, setImagePreview] = useState("")
   const [imageFile, setImageFile] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   // Estados para las categorías
   const [categorias, setCategorias] = useState([])
@@ -91,7 +93,7 @@ const ProductoForm = ({ producto, onClose, onSave }) => {
     }
   }
 
-  const validateForm = () => {
+  const validateForm = async () => {
     const newErrors = {}
 
     if (!formData.nombre.trim()) {
@@ -129,11 +131,11 @@ const ProductoForm = ({ producto, onClose, onSave }) => {
       
 
       if (producto) {
-        await actualizarProducto(producto.id, productoData)
+        await updateProducto(producto.id, productoData)
         
 
       } else {
-        await crearProducto(productoData)
+        await createProducto(productoData)
         
         
       }
@@ -173,7 +175,7 @@ const ProductoForm = ({ producto, onClose, onSave }) => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={validateForm}>
             <FormField
               type="text"
               name="nombre"
