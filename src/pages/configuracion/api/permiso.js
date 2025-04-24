@@ -26,7 +26,8 @@ export const obtenerPermisosPorUsuario = async (id_usuario) => {
     const response = await axios.get(`${VITE_API_URL}/permiso/usuario/${id_usuario}`, {
       headers: getAuthHeaders(),
     })
-    return response.data.data
+    console.log("Permisos obtenidos:", response.data)
+    return response.data
   } catch (error) {
     console.error(`Error al obtener permisos para el usuario ${id_usuario}:`, error)
     throw new Error(error.response?.data?.message || `Error al obtener permisos para el usuario ${id_usuario}`)

@@ -23,11 +23,12 @@ const LoginForm = () => {
     e.preventDefault()
     try {
       await signin(formData)
-      console.log(formData)
+      
     } catch (err) {
       console.error("Error en el formulario:", err)
     }
   }
+
 
   return (
     <div className="max-w-md mx-auto bg-gray-900 rounded-xl shadow-md overflow-hidden md:max-w-2xl border border-gray-800 mt-10">

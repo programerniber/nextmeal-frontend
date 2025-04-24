@@ -213,7 +213,7 @@ const PedidoForm = ({ pedido, onClose, onSave }) => {
   total: calcularTotal(),
   productos: formData.productos.map(item => {
     const productoData = {
-      producto_id: item.producto_id,
+      id_producto: item.producto_id,
       cantidad: item.cantidad,
       precio_unitario: item.precio_unitario
     }
@@ -222,10 +222,10 @@ const PedidoForm = ({ pedido, onClose, onSave }) => {
     if (pedido && item.id) {
       productoData.id = item.id
     }
-    
     return productoData
   })
 }
+console.log("pedidoData: ",pedidoData)
       
       let respuesta;
       if (pedido) {

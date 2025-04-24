@@ -94,26 +94,7 @@ const Configuracion = () => {
           </div>
         </div>
       </div>
-      <div className="mt-6 bg-gray-800 p-4 rounded-lg border border-gray-700 text-sm">
-        <h3 className="text-orange-400 font-medium mb-2 flex items-center">
-          <AlertTriangle className="mr-2" size={16} />
-          Información de Depuración
-        </h3>
-        <p className="text-gray-300 mb-2">
-          Si estás experimentando errores de conexión con la API, verifica lo siguiente:
-        </p>
-        <ul className="list-disc pl-5 text-gray-400 space-y-1">
-          <li>
-            El servidor API está ejecutándose en{" "}
-            <code className="bg-gray-900 px-1 py-0.5 rounded">http://localhost:3000</code>
-          </li>
-          <li>
-            Las rutas <code className="bg-gray-900 px-1 py-0.5 rounded">/api/roles</code> y{" "}
-            <code className="bg-gray-900 px-1 py-0.5 rounded">/api/permisos</code> están disponibles
-          </li>
-          <li>El token de autenticación está presente en localStorage (si es requerido)</li>
-        </ul>
-      </div>
+      
     </div>
   )
 }

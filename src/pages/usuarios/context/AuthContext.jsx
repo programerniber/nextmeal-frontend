@@ -4,7 +4,8 @@ import { createContext, useContext, useState, useEffect } from "react"
 import { getUsuarioAutenticado, loginUsuario, logoutUsuario } from "../api/usuarioService.js"
 import { useNavigate } from "react-router-dom"
 
-const AuthContext = createContext()
+
+export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
@@ -28,7 +29,7 @@ useEffect(() => {
         if (window.location.pathname === '/login') {
           navigate("/dashboard");
         }
-      } catch (error) {
+      } catch {
         setUser(null);
         setIsAuthenticated(false);
         localStorage.removeItem('token');
@@ -114,4 +115,3 @@ export const useAuth = () => {
   if (!context) throw new Error("useAuth debe usarse dentro de un AuthProvider")
   return context
 }
-
