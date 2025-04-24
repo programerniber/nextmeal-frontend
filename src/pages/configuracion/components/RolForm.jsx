@@ -1,7 +1,7 @@
 // Primero, modifica el useEffect inicial para cargar y mapear todos los permisos disponibles
 import { useState, useEffect } from "react"
 import { crearRol, actualizarRol } from "../api/rol"
-import { obtenerPermisosPorUsuario, obtenerPermisos } from "../api/permiso"
+import { obtenerPermisosPorRol, obtenerPermisos } from "../api/permiso"
 import { Shield, Save, X, AlertTriangle } from "lucide-react"
 
 const RolForm = ({ onRolCreado, rolEditar, onCancel }) => {
@@ -14,83 +14,48 @@ const RolForm = ({ onRolCreado, rolEditar, onCancel }) => {
 
   // Cargar datos si estamos editando
   useEffect(() => {
-    const cargarDatosEdicion = async () => {
-      if (rolEditar) {
-        setNombre(rolEditar.nombre)
-        setModo("editar")
-
-        try {
-          // Cargar permisos existentes
-          const permisosExistentes = await obtenerPermisosPorUsuario(rolEditar.id)
-          console.log("Permisos existentes:", permisosExistentes)
-
-          // Resetear permisos
-          const nuevosPermisos = {
-            clientes: { crear: false, editar: false },
-            productos: { crear: false, editar: false },
-            ventas: { crear: false, editar: false },
-            pedidos: { crear: false, editar: false },
-            categorias: { crear: false, editar: false },
-          }
-          if (Array.isArray(permisosExistentes)) {
-            permisosExistentes.forEach((permiso) => {
-              if (nuevosPermisos[permiso.recurso]) {
-                nuevosPermisos[permiso.recurso][permiso.accion] = permiso.activo
-              }
-            })
-          } else {
-            console.warn("permisosExistentes no es un array", permisosExistentes)
-          }
-
-          setPermisos(nuevosPermisos)
-        } catch (err) {
-          console.error("Error completo al cargar permisos:", err)
-          setError(`Error al cargar permisos: ${err.message}`)
-        }
-      } else {
-        // Resetear formulario
-        setNombre("")
-        setPermisos({
-          clientes: { crear: false, editar: false },
-          productos: { crear: false, editar: false },
-          ventas: { crear: false, editar: false },
-          pedidos: { crear: false, editar: false },
-          categorias: { crear: false, editar: false },
-        })
-        setModo("crear")
-      }
-    }
-
-    cargarDatosEdicion()
-  }, [rolEditar])
-
-  // Cargar todos los permisos disponibles y mapearlos
-  useEffect(() => {
-    const cargarTodosLosPermisos = async () => {
+    const cargarFormulario = async () => {
       try {
         const { permisos: permisosDisponibles } = await obtenerPermisos()
-        console.log("Todos los permisos disponibles:", permisosDisponibles)
         setTodosLosPermisos(permisosDisponibles)
 
-        // Inicializar el estado de permisos si es necesario
-        if (Object.keys(permisos).length === 0) {
-          const permisosMap = {}
-          permisosDisponibles.forEach((permiso) => {
-            if (!permisosMap[permiso.recurso]) {
-              permisosMap[permiso.recurso] = { crear: false, editar: false }
+        // Inicializar estructura base
+        const permisosMap = {}
+        permisosDisponibles.forEach((permiso) => {
+          if (!permisosMap[permiso.recurso]) {
+            permisosMap[permiso.recurso] = {}
+          }
+          permisosMap[permiso.recurso][permiso.accion] = false
+        })
+
+        // Si estamos en modo edición, aplicar los permisos actuales
+        if (rolEditar) {
+          setNombre(rolEditar.nombre)
+          setModo("editar")
+
+          const response = await obtenerPermisosPorRol(rolEditar.id)
+          const permisosExistentes = response.permisos || []
+
+          permisosExistentes.forEach((permiso) => {
+            if (permisosMap[permiso.recurso]) {
+              permisosMap[permiso.recurso][permiso.accion] = permiso.activo
             }
-            permisosMap[permiso.recurso][permiso.accion] = false
           })
-          setPermisos(permisosMap)
+        } else {
+          setModo("crear")
+          setNombre("")
         }
+
+        setPermisos(permisosMap)
       } catch (err) {
-        console.error("Error al cargar permisos disponibles:", err)
-        setError(`Error al cargar permisos disponibles: ${err.message}`)
+        console.error("Error al cargar datos del formulario:", err)
+        setError(`Error al cargar datos del formulario: ${err.message}`)
       }
     }
 
-    cargarTodosLosPermisos()
-  }, [])
+    cargarFormulario()
+  }, [rolEditar])
+
 
   const handleCheckboxChange = (modulo, accion) => {
     setPermisos({
