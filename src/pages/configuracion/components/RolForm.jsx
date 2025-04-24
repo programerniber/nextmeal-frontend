@@ -1,22 +1,16 @@
-"use client"
-
+// Primero, modifica el useEffect inicial para cargar y mapear todos los permisos disponibles
 import { useState, useEffect } from "react"
 import { crearRol, actualizarRol } from "../api/rol"
-import { crearPermiso, eliminarPermiso, obtenerPermisosPorUsuario } from "../api/permiso"
+import { obtenerPermisosPorUsuario, obtenerPermisos } from "../api/permiso"
 import { Shield, Save, X, AlertTriangle } from "lucide-react"
 
 const RolForm = ({ onRolCreado, rolEditar, onCancel }) => {
   const [nombre, setNombre] = useState("")
-  const [permisos, setPermisos] = useState({
-    clientes: { crear: false, editar: false },
-    productos: { crear: false, editar: false },
-    ventas: { crear: false, editar: false },
-    pedidos: { crear: false, editar: false },
-    categorias: { crear: false, editar: false },
-  })
+  const [permisos, setPermisos] = useState({})
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState("")
   const [modo, setModo] = useState("crear")
+  const [todosLosPermisos, setTodosLosPermisos] = useState([]) // Lista completa de permisos del sistema
 
   // Cargar datos si estamos editando
   useEffect(() => {
@@ -70,6 +64,34 @@ const RolForm = ({ onRolCreado, rolEditar, onCancel }) => {
     cargarDatosEdicion()
   }, [rolEditar])
 
+  // Cargar todos los permisos disponibles y mapearlos
+  useEffect(() => {
+    const cargarTodosLosPermisos = async () => {
+      try {
+        const { permisos: permisosDisponibles } = await obtenerPermisos()
+        console.log("Todos los permisos disponibles:", permisosDisponibles)
+        setTodosLosPermisos(permisosDisponibles)
+
+        // Inicializar el estado de permisos si es necesario
+        if (Object.keys(permisos).length === 0) {
+          const permisosMap = {}
+          permisosDisponibles.forEach((permiso) => {
+            if (!permisosMap[permiso.recurso]) {
+              permisosMap[permiso.recurso] = { crear: false, editar: false }
+            }
+            permisosMap[permiso.recurso][permiso.accion] = false
+          })
+          setPermisos(permisosMap)
+        }
+      } catch (err) {
+        console.error("Error al cargar permisos disponibles:", err)
+        setError(`Error al cargar permisos disponibles: ${err.message}`)
+      }
+    }
+
+    cargarTodosLosPermisos()
+  }, [])
+
   const handleCheckboxChange = (modulo, accion) => {
     setPermisos({
       ...permisos,
@@ -113,43 +135,47 @@ const RolForm = ({ onRolCreado, rolEditar, onCancel }) => {
     setError("")
 
     try {
-      let rolResultado
+      // Recolectar IDs de permisos seleccionados
+      const permisosSeleccionados = []
 
-      if (modo === "crear") {
-        // Crear rol
-        rolResultado = await crearRol({ nombre })
-      } else {
-        // Actualizar rol
-        rolResultado = await actualizarRol(rolEditar.id, { nombre })
-
-        // Eliminar permisos existentes para recriarlos
-        const permisosExistentes = await obtenerPermisosPorUsuario(rolEditar.id)
-        for (const permiso of permisosExistentes) {
-          await eliminarPermiso(permiso.id)
-        }
-      }
-
-      // Crear permisos para este rol
-      const permisosCreados = []
-
+      // Iterar por los permisos seleccionados por el usuario
       for (const modulo in permisos) {
         for (const accion in permisos[modulo]) {
           if (permisos[modulo][accion]) {
-            const permisoData = {
-              id_usuario: rolResultado.id,
-              recurso: modulo,
-              accion: accion,
-              activo: true,
+            // Buscar el ID del permiso en la lista completa de permisos
+            const permisoEncontrado = todosLosPermisos.find(
+              p => p.recurso === modulo && p.accion === accion
+            )
+
+            if (permisoEncontrado) {
+              permisosSeleccionados.push(permisoEncontrado.id)
+            } else {
+              console.warn(`No se encontró el permiso para ${modulo}.${accion}`)
             }
-            const permisoCreado = await crearPermiso(permisoData)
-            permisosCreados.push(permisoCreado)
           }
         }
       }
 
+      console.log("Permisos seleccionados para enviar:", permisosSeleccionados)
+
+      let rolResultado
+      if (modo === "crear") {
+        // Crear rol con los IDs de permisos seleccionados
+        rolResultado = await crearRol({
+          nombre,
+          permisos: permisosSeleccionados
+        })
+      } else if (modo === "editar") {
+        // Actualizar rol con los IDs de permisos seleccionados
+        rolResultado = await actualizarRol(rolEditar.id, {
+          nombre,
+          permisos: permisosSeleccionados
+        })
+      }
+
       // Notificar al componente padre
       if (onRolCreado) {
-        onRolCreado({ ...rolResultado, permisos: permisosCreados })
+        onRolCreado(rolResultado)
       }
     } catch (err) {
       setError(`Error al ${modo === "crear" ? "crear" : "actualizar"} el rol: ${err.message}`)
@@ -247,9 +273,8 @@ const RolForm = ({ onRolCreado, rolEditar, onCancel }) => {
                   return (
                     <tr
                       key={modulo}
-                      className={`border-t border-gray-700 hover:bg-gray-700/30 transition-colors ${
-                        index % 2 === 0 ? "bg-gray-800/50" : "bg-gray-800"
-                      }`}
+                      className={`border-t border-gray-700 hover:bg-gray-700/30 transition-colors ${index % 2 === 0 ? "bg-gray-800/50" : "bg-gray-800"
+                        }`}
                     >
                       <td className="p-3 capitalize font-medium">{modulo}</td>
                       <td className="p-3 text-center">
@@ -261,9 +286,8 @@ const RolForm = ({ onRolCreado, rolEditar, onCancel }) => {
                             className="sr-only"
                           />
                           <div
-                            className={`w-5 h-5 rounded ${
-                              acciones.crear ? "bg-green-500 ring-2 ring-green-300/30" : "bg-gray-700 hover:bg-gray-600"
-                            } flex items-center justify-center transition-all duration-200`}
+                            className={`w-5 h-5 rounded ${acciones.crear ? "bg-green-500 ring-2 ring-green-300/30" : "bg-gray-700 hover:bg-gray-600"
+                              } flex items-center justify-center transition-all duration-200`}
                           >
                             {acciones.crear && <span className="text-white text-xs">✓</span>}
                           </div>
@@ -278,11 +302,10 @@ const RolForm = ({ onRolCreado, rolEditar, onCancel }) => {
                             className="sr-only"
                           />
                           <div
-                            className={`w-5 h-5 rounded ${
-                              acciones.editar
-                                ? "bg-yellow-500 ring-2 ring-yellow-300/30"
-                                : "bg-gray-700 hover:bg-gray-600"
-                            } flex items-center justify-center transition-all duration-200`}
+                            className={`w-5 h-5 rounded ${acciones.editar
+                              ? "bg-yellow-500 ring-2 ring-yellow-300/30"
+                              : "bg-gray-700 hover:bg-gray-600"
+                              } flex items-center justify-center transition-all duration-200`}
                           >
                             {acciones.editar && <span className="text-white text-xs">✓</span>}
                           </div>
@@ -294,11 +317,10 @@ const RolForm = ({ onRolCreado, rolEditar, onCancel }) => {
                             type="button"
                             onClick={() => selectAllForModule(modulo)}
                             disabled={allSelected}
-                            className={`text-xs px-2 py-1 rounded ${
-                              allSelected
-                                ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                                : "bg-green-500/20 text-green-400 hover:bg-green-500/30"
-                            }`}
+                            className={`text-xs px-2 py-1 rounded ${allSelected
+                              ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                              : "bg-green-500/20 text-green-400 hover:bg-green-500/30"
+                              }`}
                           >
                             Todo
                           </button>
@@ -306,11 +328,10 @@ const RolForm = ({ onRolCreado, rolEditar, onCancel }) => {
                             type="button"
                             onClick={() => deselectAllForModule(modulo)}
                             disabled={noneSelected}
-                            className={`text-xs px-2 py-1 rounded ${
-                              noneSelected
-                                ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                                : "bg-red-500/20 text-red-400 hover:bg-red-500/30"
-                            }`}
+                            className={`text-xs px-2 py-1 rounded ${noneSelected
+                              ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                              : "bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                              }`}
                           >
                             Nada
                           </button>
@@ -374,4 +395,3 @@ const RolForm = ({ onRolCreado, rolEditar, onCancel }) => {
 }
 
 export default RolForm
-
