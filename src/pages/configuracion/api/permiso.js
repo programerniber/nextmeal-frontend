@@ -20,6 +20,18 @@ export const obtenerPermisos = async () => {
   }
 }
 
+export const obtenerPermisosPorRol = async (id_rol) => {
+  try {
+    const response = await axios.get(`${VITE_API_URL}/permiso/rol/${id_rol}`, {
+      headers: getAuthHeaders(),
+    })
+    return response.data
+  } catch (error) {
+    console.error(`Error al obtener permisos para el rol ${id_rol}:`, error)
+    throw new Error(error.response?.data?.message || `Error al obtener permisos asociados al rol ${id_rol}`)
+  }
+}
+
 // Obtener permisos por usuario/rol
 export const obtenerPermisosPorUsuario = async (id_usuario) => {
   try {
@@ -30,7 +42,7 @@ export const obtenerPermisosPorUsuario = async (id_usuario) => {
     return response.data
   } catch (error) {
     console.error(`Error al obtener permisos para el usuario ${id_usuario}:`, error)
-    throw new Error(error.response?.data?.message || `Error al obtener permisos para el usuario ${id_usuario}`)
+    throw new Error(error.response?.data?.message || `Error al obtener permisos asociados al usuario ${id_usuario}`)
   }
 }
 
