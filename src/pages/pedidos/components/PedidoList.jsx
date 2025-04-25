@@ -40,7 +40,7 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
   const [sortDirection, setSortDirection] = useState("desc")
   // Nuevos estados para búsqueda avanzada
   const [searchCategory, setSearchCategory] = useState("all")
-  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false)
+  const [showAdvancedSearch,] = useState(false)
 
   const itemsPerPage = 5
 
@@ -95,6 +95,11 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
   }
 
   const handleChangeStatus = (pedido) => {
+    // No permitir cambiar el estado si ya está terminado
+    if (pedido.estado === "terminado") {
+      return;
+    }
+    
     setPedidoToChangeStatus(pedido)
     setShowEstadoModal(true)
   }
@@ -164,7 +169,8 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
         // Búsqueda en todos los campos
         return (
           pedido.Cliente?.nombrecompleto?.toLowerCase().includes(searchLower) ||
-          pedido.Producto?.nombre?.toLowerCase().includes(searchLower) ||
+          pedido.direccion_envio?.toLowerCase().includes(searchLower) || // Nueva línea agregada
+          pedido.Productos?.some(p => p.nombre?.toLowerCase().includes(searchLower)) || // Modificado
           pedido.id.toString().includes(debouncedSearchTerm) ||
           pedido.total.toString().includes(debouncedSearchTerm)
         )
@@ -186,41 +192,44 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
   }
 
   // Componente para renderizar una fila de la tabla
-  const PedidoRow = ({ pedido }) => {
+  const PedidoRow = ({ pedido, onEdit, handleViewDetail, handleDeleteClick, handleChangeStatus, isUpdating }) => {
     const estadoClasses = {
       pendiente: "bg-yellow-900 text-yellow-300 border-yellow-500",
       preparacion: "bg-blue-900 text-blue-300 border-blue-500",
       terminado: "bg-green-900 text-green-300 border-green-500",
       cancelado: "bg-red-900 text-red-300 border-red-500",
     }
-
-    const estadoIcons = {
-      pendiente: <Clock size={16} className="mr-1" />,
-      preparacion: <Utensils size={16} className="mr-1" />,
-      terminado: <CheckCircle size={16} className="mr-1" />,
-      cancelado: <XCircle size={16} className="mr-1" />,
-    }
-
+    
     return (
       <tr className="hover:bg-gray-800 transition-colors">
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-white">#{pedido.id}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-white">{pedido.Cliente?.nombrecompleto}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{pedido.Producto?.nombre}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{pedido.cantidad}</td>
+        {/* ID */}
+        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
+          #{pedido.id}
+        </td>
+        
+        {/* Cliente */}
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
+          {pedido.Cliente?.nombrecompleto}
+        </td>
+        
+        {/* Total */}
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
           ${formatearPesosColombianos(pedido.total)}
         </td>
+        
+        {/* Estado */}
         <td className="px-6 py-4 whitespace-nowrap">
           <button
             onClick={() => handleChangeStatus(pedido)}
-            disabled={isUpdating}
-            className={`px-2 py-1 inline-flex items-center text-xs leading-5 font-semibold rounded-full border ${estadoClasses[pedido.estado]} transition-colors`}
-            title="Cambiar estado"
+            disabled={isUpdating || pedido.estado === "terminado"}
+            className={`px-2 py-1 inline-flex items-center text-xs leading-5 font-semibold rounded-full border ${estadoClasses[pedido.estado]} transition-colors ${pedido.estado === "terminado" ? "opacity-50 cursor-not-allowed" : ""}`}
+            title={pedido.estado === "terminado" ? "No se puede cambiar el estado de pedidos terminados" : "Cambiar estado"}
           >
-            {estadoIcons[pedido.estado]}
             {pedido.estado.charAt(0).toUpperCase() + pedido.estado.slice(1)}
           </button>
         </td>
+        
+        {/* Fecha */}
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
           {new Date(pedido.fecha_pedido).toLocaleString("es-CO", {
             day: "2-digit",
@@ -230,6 +239,8 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
             minute: "2-digit",
           })}
         </td>
+        
+        {/* Acciones */}
         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
           <div className="flex space-x-2">
             <button
@@ -259,7 +270,7 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
       </tr>
     )
   }
-
+  
   // Componente para tarjeta de pedido en vista Kanban
   const PedidoCard = ({ pedido }) => {
     const borderColors = {
@@ -271,59 +282,42 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
 
     return (
       <div
-        className={`bg-gray-800 rounded-lg p-4 mb-3 border-r-2 ${borderColors[pedido.estado]} shadow-md hover:shadow-lg transition-all`}
+        className={`bg-gray-800 rounded-lg p-4 mb-3 border-r-2 ${borderColors[pedido.estado]} shadow-md hover:shadow-lg transition-all flex flex-col justify-between h-full`}
       >
-        <div className="flex justify-between items-start mb-2">
-          <h3 className="text-white font-medium">
-            #{pedido.id} - {pedido.Producto?.nombre || "Producto no disponible"}
+        <div className="flex-grow">
+          <h3 className="text-white text-center text-lg font-semibold mb-2">
+            {pedido.Cliente?.nombrecompleto || "Sin cliente"}
           </h3>
-          <div className="flex space-x-1">
-            <button
-              onClick={() => handleViewDetail(pedido)}
-              className="text-blue-400 hover:text-blue-300 transition-colors p-1"
-              title="Ver detalles"
-            >
-              <Eye size={16} />
-            </button>
-            <button
-              onClick={() => onEdit(pedido)}
-              className="text-orange-500 hover:text-orange-400 transition-colors p-1"
-              title="Editar"
-            >
-              <Edit size={16} />
-            </button>
-          </div>
-        </div>
-
-        <div className="text-sm text-gray-300 mb-2">
-          Cliente: {pedido.Cliente?.nombrecompleto || "Cliente no disponible"}
-        </div>
-
-        <div className="flex justify-between text-sm mb-3">
-          <span className="text-gray-400">Cantidad: {pedido.cantidad}</span>
-          <span className="text-white font-medium">${formatearPesosColombianos(pedido.total)} pesos</span>
-        </div>
-
-        <div className="flex justify-between items-center">
-          <span className="text-xs text-gray-400">
+          <p className="text-center text-sm text-gray-400 mb-2">
             {new Date(pedido.fecha_pedido).toLocaleString("es-CO", {
               day: "2-digit",
               month: "2-digit",
+              year: "numeric",
               hour: "2-digit",
               minute: "2-digit",
             })}
-          </span>
+          </p>
+        </div>
+
+        <div className="flex justify-center gap-4 pt-3 border-t border-gray-600">
           <button
-            onClick={() => handleChangeStatus(pedido)}
-            className="text-xs text-orange-400 hover:text-orange-300 transition-colors"
+            onClick={() => handleViewDetail(pedido)}
+            className="text-blue-400 hover:text-blue-300"
+            title="Ver detalles"
           >
-            Cambiar estado
+            <Eye size={18} />
+          </button>
+          <button
+            onClick={() => onEdit(pedido)}
+            className="text-orange-500 hover:text-orange-400"
+            title="Editar"
+          >
+            <Edit size={18} />
           </button>
         </div>
       </div>
     )
   }
-
   // Componente para la barra de búsqueda mejorada
   const SearchBar = () => (
     <div className="flex flex-col gap-4 mb-6">
@@ -345,12 +339,7 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
                 <XIcon size={16} />
               </button>
             )}
-            <button
-              onClick={() => setShowAdvancedSearch(!showAdvancedSearch)}
-              className="bg-gray-800 text-gray-300 hover:bg-gray-700 px-3 py-3 border-l border-gray-700"
-            >
-              <Filter size={16} />
-            </button>
+            
           </div>
         </div>
 
@@ -537,8 +526,6 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
           <tr>
             <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">ID</th>
             <SortableHeader field="cliente" label="Cliente" />
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Producto</th>
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Cantidad</th>
             <SortableHeader field="total" label="Total" />
             <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Estado</th>
             <SortableHeader field="fecha_pedido" label="Fecha" />
@@ -547,10 +534,20 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
         </thead>
         <tbody className="divide-y divide-gray-800">
           {paginatedPedidos.length > 0 ? (
-            paginatedPedidos.map((pedido) => <PedidoRow key={pedido.id} pedido={pedido} />)
+            paginatedPedidos.map((pedido) => (
+              <PedidoRow 
+                key={pedido.id} 
+                pedido={pedido} 
+                onEdit={onEdit}
+                handleViewDetail={handleViewDetail}
+                handleDeleteClick={handleDeleteClick}
+                handleChangeStatus={handleChangeStatus}
+                isUpdating={isUpdating}
+              />
+            ))
           ) : (
             <tr>
-              <td colSpan="8" className="px-6 py-4 text-center text-gray-400">
+              <td colSpan="6" className="px-6 py-4 text-center text-gray-400">
                 No se encontraron pedidos
               </td>
             </tr>

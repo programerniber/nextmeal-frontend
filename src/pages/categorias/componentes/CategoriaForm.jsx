@@ -17,7 +17,7 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState("")
-  const [imagePreview, setImagePreview] = useState("")
+   const [imagePreview] = useState("")
   const [imageFile, setImageFile] = useState(null)
   const [currentStep, setCurrentStep] = useState(1)
   const totalSteps = 2
@@ -96,6 +96,8 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
 
     setIsSubmitting(true)
     setSubmitError("")
+
+    console.log("Datos enviados:", formData)
 
     try {
       // Preparar los datos para enviar

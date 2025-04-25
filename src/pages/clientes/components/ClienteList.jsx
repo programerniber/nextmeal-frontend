@@ -1,7 +1,16 @@
-"use client"
-
 import { useState, useEffect } from "react"
-import { Edit, Trash2, Search, RefreshCw, Eye, ChevronLeft, ChevronRight, ToggleLeft, ToggleRight } from "lucide-react"
+import {
+  Edit,
+  Trash2,
+  Search,
+  RefreshCw,
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+  ToggleLeft,
+  ToggleRight,
+} from "lucide-react"
+import { toast } from "react-toastify"
 import { deleteCliente, toggleClienteEstado } from "../api/clienteService"
 import ClienteDetailModal from "../modals/ClienteDetailModal"
 import DeleteConfirmModal from "../modals/DeleteConfirmModal"
@@ -17,7 +26,7 @@ const ClienteList = ({ clientes = [], onEdit, onDelete, onRefresh }) => {
   const [actionError, setActionError] = useState("")
 
   const itemsPerPage = 5
-  console.log("Clientes:", clientes)
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm)
@@ -26,7 +35,6 @@ const ClienteList = ({ clientes = [], onEdit, onDelete, onRefresh }) => {
     return () => clearTimeout(timer)
   }, [searchTerm])
 
-  // Cuando cambian los clientes, asegurarse de que la página actual sea válida
   useEffect(() => {
     if (Array.isArray(clientes) && clientes.length > 0) {
       const maxPage = Math.ceil(clientes.length / itemsPerPage)
@@ -36,7 +44,6 @@ const ClienteList = ({ clientes = [], onEdit, onDelete, onRefresh }) => {
     }
   }, [clientes, currentPage, itemsPerPage])
 
-  // Asegurarnos de que clientes sea siempre un array
   const clientesArray = Array.isArray(clientes) ? clientes : []
 
   const filteredClientes = clientesArray.filter((cliente) =>
@@ -59,42 +66,41 @@ const ClienteList = ({ clientes = [], onEdit, onDelete, onRefresh }) => {
   const confirmDelete = async () => {
     try {
       setActionError("")
-      console.log("Eliminando cliente:", clienteToDelete)
       await deleteCliente(clienteToDelete.id)
+      toast.success(`Cliente ${clienteToDelete.nombreCompleto} eliminado exitosamente`)
       if (typeof onDelete === "function") {
         onDelete()
       }
       setIsDeleting(false)
       setClienteToDelete(null)
     } catch (error) {
-      console.error("Error al eliminar cliente:", error)
-      setActionError(error.message || "Error al eliminar cliente")
+      const msg = error.message || "Error al eliminar cliente"
+      setActionError(msg)
+      toast.error(msg)
     }
   }
 
-  // Función corregida para cambiar el estado
   const handleToggleEstado = async (cliente) => {
     try {
       setIsUpdating(true)
       setActionError("")
-      console.log("Cambiando estado del cliente:", cliente)
-      // Ahora pasamos el estado actual como segundo parámetro
       await toggleClienteEstado(cliente.id, cliente.estado)
+      toast.success(
+        `Cliente ${cliente.nombreCompleto} ${cliente.estado === "activo" ? "desactivado" : "activado"} correctamente`
+      )
       if (typeof onRefresh === "function") {
         onRefresh()
       }
     } catch (error) {
-      console.error("Error al cambiar estado del cliente:", error)
-      setActionError(error.message || "Error al cambiar estado del cliente")
+      const msg = error.message || "Error al cambiar estado del cliente"
+      setActionError(msg)
+      toast.error(msg)
     } finally {
       setIsUpdating(false)
     }
   }
 
-  // Función para manejar el clic en el botón de editar
   const handleEditClick = (cliente) => {
-    // Aquí simplemente pasamos el cliente al componente padre
-    // sin hacer nada más que podría interferir con el flujo
     if (onEdit && typeof onEdit === "function") {
       onEdit(cliente)
     }
@@ -109,7 +115,6 @@ const ClienteList = ({ clientes = [], onEdit, onDelete, onRefresh }) => {
 
   return (
     <div>
-      {/* Mensaje de error */}
       {actionError && (
         <div className="bg-red-900 text-white p-3 rounded-lg mb-4 animate-pulse border border-red-500 text-sm">
           {actionError}
@@ -281,9 +286,7 @@ const ClienteList = ({ clientes = [], onEdit, onDelete, onRefresh }) => {
           cliente={showDetail}
           onClose={() => setShowDetail(null)}
           onEdit={() => {
-            // Primero cerramos el modal de detalles
             setShowDetail(null)
-            // Luego, con un pequeño retraso, abrimos el modo de edición
             setTimeout(() => {
               handleEditClick(showDetail)
             }, 100)
@@ -307,4 +310,3 @@ const ClienteList = ({ clientes = [], onEdit, onDelete, onRefresh }) => {
 }
 
 export default ClienteList
-

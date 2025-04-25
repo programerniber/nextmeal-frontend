@@ -1,8 +1,14 @@
-"use client"
+import {
+  Outlet,
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate
+} from "react-router-dom"
 
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
 import Sidebar from "./components/layout/sidebar"
 import Navbar from "./components/layout/navbar"
+
 import Cliente from "./pages/clientes/cliente"
 import Pedido from "./pages/pedidos/pedido"
 import Categoria from "./pages/categorias/categoria"
@@ -12,6 +18,10 @@ import Configuracion from "./pages/configuracion/configuracion"
 import { SidebarProvider } from "./components/layout/sidebarContext"
 import LoginPage from "./pages/usuarios/Login"
 import { useSidebar } from "./components/layout/sidebarUtils"
+import { ToastContainer } from "react-toastify"
+import "react-toastify/dist/ReactToastify.css"
+
+import "./App.css"
 import { AuthProvider, useAuth } from "./pages/usuarios/context/AuthContext"
 import "./App.css"
 
@@ -47,7 +57,6 @@ export function App() {
   )
 }
 
-// Componente separado para acceder al contexto
 function AppContent() {
   const { isExpanded } = useSidebar()
   const { isAuthenticated, isLoadingAuth } = useAuth()
@@ -149,12 +158,26 @@ function AppContent() {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </div>
+
+        {/* 🔔 Contenedor global para notificaciones */}
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          pauseOnHover
+          theme="dark" // Puedes cambiarlo a "light" o "colored"
+        />
       </main>
     </div>
   )
 }
 
-// Componente para manejar rutas no encontradas
+function Layout() {
+  return <Outlet />
+}
+
 function NotFound() {
   return (
     <div className="flex justify-center items-center h-full">
@@ -166,7 +189,6 @@ function NotFound() {
   )
 }
 
-// Componentes temporales para las rutas faltantes
 function Dashboard() {
   const { user } = useAuth()
 

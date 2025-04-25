@@ -25,6 +25,8 @@ const ProductoForm = ({ producto, onClose, onSave }) => {
   const [currentStep, setCurrentStep] = useState(1)
   const totalSteps = 2
   const [showSuccessMessage, setShowSuccessMessage] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   // Estados para las categorías
   const [categorias, setCategorias] = useState([])
@@ -113,7 +115,7 @@ const ProductoForm = ({ producto, onClose, onSave }) => {
     return Object.keys(newErrors).length === 0
   }
 
-  const validateForm = () => {
+  const validateForm = async () => {
     const newErrors = {}
 
     if (!formData.nombre.trim()) {

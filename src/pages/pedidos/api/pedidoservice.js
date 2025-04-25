@@ -19,7 +19,7 @@ export const createPedido = async (pedidoData) => {
         )
         .join(", ");
       error.message = errorMessage || error.message;
-    } else if (error.response?.data?.mensaje) {
+    } else if (error.response.data?.mensaje) {
       console.error("Mensaje de error del backend:", error);
     } else {
       console.error("Error al crear pedido:", error.message);
@@ -38,6 +38,7 @@ export const fetchPedidos = async () => {
     throw error;
   }
 };
+
 
 // ✅ Actualizar pedido por ID (PUT)
 export const updatePedido = async (id, pedidoData) => {

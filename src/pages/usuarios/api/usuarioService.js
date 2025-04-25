@@ -24,14 +24,24 @@ axios.interceptors.response.use(
 // Función para iniciar sesión
 export const loginUsuario = async (credentials) => {
   try {
-    const response = await axios.post(`${VITE_API_URL}/autenticacion/login`, credentials)
-    return response.data
+    console.log("Enviando credenciales:", credentials);
+    const response = await axios.post(`${VITE_API_URL}/autenticacion/login`, credentials);
+    
+    // Imprime la respuesta para depuración
+    console.log("Respuesta completa:", response);
+    
+    // Verifica cómo viene estructurada la respuesta
+    return response.data; // Cambiado de response.data.data
   } catch (error) {
-    console.error("Error al iniciar sesión:", error)
-    throw error
+    console.error("Error al iniciar sesión:", error);
+    // Imprime más detalles del error
+    if (error.response) {
+      console.error("Datos del error:", error.response.data);
+      console.error("Estado:", error.response.status);
+    }
+    throw error;
   }
 }
-
 // Función para cerrar sesión
 export const logoutUsuario = async () => {
   try {
@@ -49,6 +59,7 @@ export const getUsuarioAutenticado = async () => {
     const response = await axios.get(`${VITE_API_URL}/autenticacion/usuario-autenticado`, {
       withCredentials: true,
     })
+    console.log("Usuario autenticado:", response.data);
     return response.data.data
   } catch (error) {
     console.error("Error al obtener usuario autenticado:", error)
@@ -107,7 +118,6 @@ export const deleteUsuario = async (id) => {
     throw error
   }
 }
-
 // Función para cambiar el estado de un usuario - CORREGIDA
 export const toggleUsuarioEstado = async (id, estadoActual) => {
   try {

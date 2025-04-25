@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react"
 import { obtenerRoles, eliminarRol } from "../api/rol"
-import { obtenerPermisosPorUsuario } from "../api/permiso"
+import { obtenerPermisosPorRol } from "../api/permiso"
 import { Edit, Trash, Eye, EyeOff, AlertTriangle, Check, X, Shield } from "lucide-react"
 
 const RolList = ({ onEditRol, refreshTrigger }) => {
@@ -30,7 +30,7 @@ const RolList = ({ onEditRol, refreshTrigger }) => {
         const permisosTemp = {}
         for (const rol of rolesData) {
           try {
-            const permisosRol = await obtenerPermisosPorUsuario(rol.id)
+            const permisosRol = await obtenerPermisosPorRol(rol.id)
             permisosTemp[rol.id] = permisosRol
           } catch (permError) {
             console.error(`Error al cargar permisos para rol ${rol.id}:`, permError)
@@ -51,11 +51,16 @@ const RolList = ({ onEditRol, refreshTrigger }) => {
   }, [refreshTrigger])
 
   const tienePermiso = (rolId, modulo, accion) => {
-    if (!permisosPorRol[rolId]) return false
-
-    return permisosPorRol[rolId].some(
+    if (!permisosPorRol[rolId]) return false;
+    
+    // Si permisosPorRol[rolId] es un objeto con propiedad 'permisos'
+    const permisosArray = Array.isArray(permisosPorRol[rolId]) 
+      ? permisosPorRol[rolId] 
+      : (permisosPorRol[rolId].permisos || []);
+    
+    return permisosArray.some(
       (permiso) => permiso.recurso === modulo && permiso.accion === accion && permiso.activo,
-    )
+    );
   }
 
   const handleVerPermisos = (rol) => {
@@ -128,11 +133,10 @@ const RolList = ({ onEditRol, refreshTrigger }) => {
                     <div className="flex justify-center space-x-3">
                       <button
                         onClick={() => handleVerPermisos(rol)}
-                        className={`p-1.5 rounded-full transition-all duration-200 ${
-                          rolSeleccionado === rol.id
-                            ? "bg-blue-500/20 text-blue-400"
-                            : "text-blue-400/70 hover:text-blue-400 hover:bg-blue-500/10"
-                        }`}
+                        className={`p-1.5 rounded-full transition-all duration-200 ${rolSeleccionado === rol.id
+                          ? "bg-blue-500/20 text-blue-400"
+                          : "text-blue-400/70 hover:text-blue-400 hover:bg-blue-500/10"
+                          }`}
                         title={rolSeleccionado === rol.id ? "Ocultar permisos" : "Ver permisos"}
                       >
                         {rolSeleccionado === rol.id ? <EyeOff size={18} /> : <Eye size={18} />}
