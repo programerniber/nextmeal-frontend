@@ -1,192 +1,423 @@
+"use client"
+
 import { useState, useEffect } from "react"
-import { X, Save, User, Mail, Lock, Shield } from "lucide-react"
-import { createUsuario, updateUsuario } from "../api/usuarioService"
+import { X, Save, User, Mail, Lock, Shield, CheckCircle, AlertCircle, CreditCard } from "lucide-react"
+import { createUsuario, updateUsuario, verificarDuplicado } from "../api/usuarioService"
 
 const UserForm = ({ usuario, onClose, onSave }) => {
-  const [formData, setFormData] = useState({
+  const initialFormData = {
     nombre: "",
     email: "",
     password: "",
-    id_rol: 2 // Valor por defecto para empleado
-  })
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
+    cedula: "",
+    id_rol: 2, // Valor por defecto para empleado
+    estado: "activo",
+  }
+
+  const [formData, setFormData] = useState(initialFormData)
+  const [errors, setErrors] = useState({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState("")
+  const [currentStep, setCurrentStep] = useState(1)
+  const totalSteps = 2
+  const [formSubmitted, setFormSubmitted] = useState(false)
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false)
 
   useEffect(() => {
     if (usuario) {
       setFormData({
-        nombre: usuario.nombre,
-        email: usuario.email,
-        password: "",
-        id_rol: usuario.id_rol
+        nombre: usuario.nombre || "",
+        email: usuario.email || "",
+        cedula: usuario.cedula || "",
+        password: "", // No mostrar contraseña actual por seguridad
+        id_rol: usuario.id_rol || 2,
+        estado: usuario.estado || "activo",
       })
     }
   }, [usuario])
 
   const handleChange = (e) => {
     const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
-
-    try {
-      if (usuario) {
-        // Actualizar usuario
-        await updateUsuario(usuario.id, formData)
-      } else {
-        // Crear nuevo usuario
-        await createUsuario(formData)
-      }
-      onSave()
-    } catch (err) {
-      setError(err.response?.data?.mensaje || "Error al guardar el usuario")
-      console.error("Error:", err)
-    } finally {
-      setLoading(false)
+    setFormData((prev) => ({ ...prev, [name]: value }))
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }))
     }
   }
 
+  // Verificar si un campo ya existe en la base de datos
+  const checkDuplicate = async (field, value) => {
+    if (!value) return false
+
+    try {
+      // Si estamos editando, no verificar el mismo usuario
+      if (usuario && field === "email" && usuario.email === value) {
+        return false
+      }
+      if (usuario && field === "cedula" && usuario.cedula === value) {
+        return false
+      }
+
+      const response = await verificarDuplicado(field, value)
+      return response.existe
+    } catch (error) {
+      console.error(`Error al verificar duplicado de ${field}:`, error)
+      return false
+    }
+  }
+
+  const validations = {
+    nombre: async (value) => {
+      if (!value.trim()) return "El nombre es obligatorio"
+      if (value.trim().length < 3) return "El nombre debe tener al menos 3 caracteres"
+      if (value.trim().length > 100) return "El nombre debe tener máximo 100 caracteres"
+      return ""
+    },
+    email: async (value) => {
+      if (!value.trim()) return "El correo es obligatorio"
+      if (!/\S+@\S+\.\S+/.test(value)) return "El correo no es válido"
+
+      // Verificar si el email ya existe
+      const duplicado = await checkDuplicate("email", value)
+      if (duplicado) return "Este correo electrónico ya está registrado"
+
+      return ""
+    },
+    cedula: async (value) => {
+      if (!value.trim()) return "La cédula es obligatoria"
+      if (value.trim().length < 6) return "La cédula debe tener al menos 6 caracteres"
+      if (value.trim().length > 15) return "La cédula debe tener máximo 15 caracteres"
+      if (!/^\d+$/.test(value)) return "La cédula debe contener solo números"
+
+      // Verificar si la cédula ya existe
+      const duplicado = await checkDuplicate("cedula", value)
+      if (duplicado) return "Esta cédula ya está registrada"
+
+      return ""
+    },
+    password: async (value) => {
+      // Si estamos editando, la contraseña es opcional
+      if (usuario && !value.trim()) return ""
+      if (!value.trim()) return "La contraseña es obligatoria"
+      if (value.trim().length < 6) return "La contraseña debe tener al menos 6 caracteres"
+      return ""
+    },
+    id_rol: async (value) => {
+      if (!value) return "El rol es obligatorio"
+      return ""
+    },
+  }
+
+  const validateCurrentStep = async () => {
+    const newErrors = {}
+    const fieldsToValidate = currentStep === 1 ? ["nombre", "email", "cedula"] : ["password", "id_rol"]
+
+    for (const field of fieldsToValidate) {
+      if (validations[field]) {
+        const error = await validations[field](formData[field])
+        if (error) newErrors[field] = error
+      }
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const validateForm = async () => {
+    const newErrors = {}
+
+    for (const field of Object.keys(validations)) {
+      const error = await validations[field](formData[field])
+      if (error) newErrors[field] = error
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const submitForm = async () => {
+    if (formSubmitted) return
+    setFormSubmitted(true)
+
+    if (!(await validateForm())) {
+      setFormSubmitted(false)
+      return
+    }
+
+    setIsSubmitting(true)
+    setSubmitError("")
+
+    try {
+      // Si estamos editando y no se ha cambiado la contraseña, no la enviamos
+      const dataToSend = { ...formData }
+      if (usuario && !dataToSend.password) {
+        delete dataToSend.password
+      }
+
+      let savedUsuario
+      if (usuario) {
+        savedUsuario = await updateUsuario(usuario.id, dataToSend)
+        setShowSuccessMessage(true)
+
+        // Mostrar mensaje de éxito por 2 segundos antes de cerrar
+        setTimeout(() => {
+          if (typeof onSave === "function") {
+            onSave(savedUsuario)
+          }
+          onClose()
+        }, 2000)
+      } else {
+        savedUsuario = await createUsuario(dataToSend)
+
+        if (typeof onSave === "function") {
+          onSave(savedUsuario)
+        }
+        onClose()
+      }
+    } catch (error) {
+      console.error("Error al guardar usuario:", error)
+      setSubmitError(error.message || "Error al guardar el usuario")
+      setFormSubmitted(false)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const nextStep = async () => {
+    if (await validateCurrentStep()) {
+      setCurrentStep((prev) => Math.min(prev + 1, totalSteps))
+    }
+  }
+
+  const prevStep = () => {
+    setCurrentStep((prev) => Math.max(prev - 1, 1))
+  }
+
+  const formFieldsByStep = {
+    1: [
+      {
+        type: "text",
+        name: "nombre",
+        label: "Nombre Completo",
+        value: formData.nombre,
+        error: errors.nombre,
+        icon: <User size={18} className="text-orange-400" />,
+      },
+      {
+        type: "email",
+        name: "email",
+        label: "Correo Electrónico",
+        value: formData.email,
+        error: errors.email,
+        icon: <Mail size={18} className="text-orange-400" />,
+      },
+      {
+        type: "text",
+        name: "cedula",
+        label: "Cédula",
+        value: formData.cedula,
+        error: errors.cedula,
+        icon: <CreditCard size={18} className="text-orange-400" />,
+        maxLength: 15,
+        pattern: "[0-9]*",
+        inputMode: "numeric",
+      },
+    ],
+    2: [
+      {
+        type: "password",
+        name: "password",
+        label: usuario ? "Nueva Contraseña (opcional)" : "Contraseña",
+        value: formData.password,
+        error: errors.password,
+        icon: <Lock size={18} className="text-orange-400" />,
+        required: !usuario,
+      },
+      {
+        type: "select",
+        name: "id_rol",
+        label: "Rol",
+        value: formData.id_rol,
+        error: errors.id_rol,
+        icon: <Shield size={18} className="text-orange-400" />,
+        options: [
+          { value: 1, label: "Administrador" },
+          { value: 2, label: "Empleado" },
+          { value: 3, label: "Cliente" },
+        ],
+      },
+      {
+        type: "select",
+        name: "estado",
+        label: "Estado",
+        value: formData.estado,
+        options: [
+          { value: "activo", label: "Activo" },
+          { value: "inactivo", label: "Inactivo" },
+        ],
+        icon:
+          formData.estado === "activo" ? (
+            <CheckCircle size={18} className="text-green-400" />
+          ) : (
+            <AlertCircle size={18} className="text-red-400" />
+          ),
+      },
+    ],
+  }
+
+  const renderFormField = (field) => {
+    if (field.type === "select") {
+      return (
+        <div key={field.name} className="mb-4">
+          <label className="block text-sm font-medium text-gray-400 mb-1">{field.label}</label>
+          <div className="relative">
+            {field.icon && (
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">{field.icon}</div>
+            )}
+            <select
+              name={field.name}
+              value={field.value}
+              onChange={handleChange}
+              className={`bg-gray-800 text-white ${field.icon ? "pl-10" : "pl-3"} w-full p-2 rounded-lg border ${
+                field.error ? "border-red-500" : "border-gray-700"
+              } focus:border-orange-500 focus:outline-none`}
+            >
+              {field.options.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          {field.error && <p className="text-red-500 text-xs mt-1">{field.error}</p>}
+        </div>
+      )
+    }
+
+    return (
+      <div key={field.name} className="mb-4">
+        <label className="block text-sm font-medium text-gray-400 mb-1">{field.label}</label>
+        <div className="relative">
+          {field.icon && (
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">{field.icon}</div>
+          )}
+          <input
+            type={field.type}
+            name={field.name}
+            value={field.value}
+            onChange={handleChange}
+            required={field.required}
+            maxLength={field.maxLength}
+            pattern={field.pattern}
+            inputMode={field.inputMode}
+            className={`bg-gray-800 text-white ${field.icon ? "pl-10" : "pl-3"} w-full p-2 rounded-lg border ${
+              field.error ? "border-red-500" : "border-gray-700"
+            } focus:border-orange-500 focus:outline-none`}
+          />
+        </div>
+        {field.error && <p className="text-red-500 text-xs mt-1">{field.error}</p>}
+      </div>
+    )
+  }
+
+  const FormSteps = () => (
+    <div className="flex justify-center mb-6">
+      {Array.from({ length: totalSteps }, (_, i) => i + 1).map((step) => (
+        <div key={step} className="flex items-center">
+          <div
+            className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-sm
+              ${
+                currentStep === step
+                  ? "bg-orange-500 shadow-lg shadow-orange-500/30"
+                  : currentStep > step
+                    ? "bg-green-500 shadow-lg shadow-green-500/30"
+                    : "bg-gray-700"
+              }`}
+          >
+            {step}
+          </div>
+          {step < totalSteps && (
+            <div className={`w-12 h-1 ${currentStep > step ? "bg-green-500" : "bg-gray-700"}`}></div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-lg shadow-xl w-full max-w-md border border-gray-800">
-        <div className="flex justify-between items-center border-b border-gray-800 p-4">
-          <h2 className="text-xl font-bold text-white">
-            {usuario ? "Editar Usuario" : "Registrar Nuevo Usuario"}
+    <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-gray-900 rounded-xl shadow-2xl w-full max-w-md border-t-4 border-orange-500 animate-fade-in">
+        <div className="flex justify-between items-center p-4 border-b border-gray-800 bg-gray-950">
+          <h2 className="text-lg font-bold text-white flex items-center">
+            <span className="bg-orange-500 text-white p-1.5 rounded-lg mr-2">
+              <User size={16} />
+            </span>
+            {usuario ? "Editar Usuario" : "Registrar Usuario"}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white"
+            className="text-gray-400 hover:text-white hover:rotate-90 transition-all bg-gray-800 p-1.5 rounded-full"
+            title="Volver"
           >
-            <X size={24} />
+            <X size={20} />
           </button>
         </div>
-        
-        {error && (
-          <div className="bg-red-900 text-white p-3 mx-4 mt-4 rounded-lg flex items-center">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 mr-2"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
-            {error}
-          </div>
-        )}
-        
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">Nombre</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <User className="h-5 w-5 text-gray-500" />
-              </div>
-              <input
-                type="text"
-                name="nombre"
-                value={formData.nombre}
-                onChange={handleChange}
-                required
-                className="bg-gray-800 text-white pl-10 w-full p-2 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
-              />
+
+        <div className="p-4">
+          {submitError && (
+            <div className="bg-red-900 text-white p-3 rounded-lg mb-4 animate-pulse border border-red-500 text-sm">
+              {submitError}
             </div>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">Email</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Mail className="h-5 w-5 text-gray-500" />
-              </div>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                className="bg-gray-800 text-white pl-10 w-full p-2 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
-              />
+          )}
+
+          {showSuccessMessage && (
+            <div className="bg-green-900 text-white p-3 rounded-lg mb-4 border border-green-500 text-sm flex items-center">
+              <CheckCircle size={18} className="mr-2 text-green-400" />
+              Usuario actualizado correctamente
             </div>
-          </div>
-          
+          )}
+
+          <FormSteps />
+
           <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">
-              {usuario ? "Nueva Contraseña (opcional)" : "Contraseña"}
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Lock className="h-5 w-5 text-gray-500" />
-              </div>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                required={!usuario}
-                minLength="6"
-                className="bg-gray-800 text-white pl-10 w-full p-2 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
-              />
-            </div>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">Rol</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Shield className="h-5 w-5 text-gray-500" />
-              </div>
-              <select
-                name="id_rol"
-                value={formData.id_rol}
-                onChange={handleChange}
-                className="bg-gray-800 text-white pl-10 w-full p-2 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none appearance-none"
-              >
-                <option value="1">Administrador</option>
-                <option value="2">Empleado</option>
-                <option value="3">Cliente</option>
-              </select>
-            </div>
-          </div>
-          
-          <div className="flex justify-end space-x-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center disabled:opacity-50"
-            >
-              {loading ? (
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
+            {formFieldsByStep[currentStep].map(renderFormField)}
+
+            <div className="flex justify-between mt-6">
+              {currentStep > 1 ? (
+                <button
+                  type="button"
+                  onClick={prevStep}
+                  className="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
+                >
+                  Atrás
+                </button>
               ) : (
-                <Save className="h-4 w-4 mr-2" />
+                <div />
               )}
-              Guardar
-            </button>
+
+              {currentStep < totalSteps ? (
+                <button
+                  type="button"
+                  onClick={nextStep}
+                  className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600"
+                >
+                  Siguiente
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={submitForm}
+                  disabled={isSubmitting}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white ${
+                    isSubmitting ? "bg-gray-600" : "bg-green-600 hover:bg-green-700"
+                  }`}
+                >
+                  <Save size={18} />
+                  {usuario ? "Actualizar" : "Guardar"}
+                </button>
+              )}
+            </div>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   )

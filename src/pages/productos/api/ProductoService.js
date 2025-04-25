@@ -5,7 +5,9 @@ const VITE_API_URL = "http://localhost:3000/api"
 // ✅ Crear producto (POST)
 export const createProducto = async (productoData) => {
   try {
+    console.log("Enviando datos al servidor:", productoData)
     const res = await axios.post(`${VITE_API_URL}/productos`, productoData)
+    console.log("Respuesta del servidor:", res.data)
     return res.data.data
   } catch (error) {
     if (error.response?.data?.errores) {
@@ -55,7 +57,9 @@ export const fetchProductoById = async (id) => {
 // ✅ Actualizar producto por ID (PUT)
 export const updateProducto = async (id, productoData) => {
   try {
+    console.log(`Actualizando producto con ID ${id}:`, productoData)
     const res = await axios.put(`${VITE_API_URL}/productos/${id}`, productoData)
+    console.log("Respuesta del servidor:", res.data)
     return res.data.data
   } catch (error) {
     console.error("Error al actualizar producto", error)
@@ -88,7 +92,8 @@ export const toggleProductoEstado = async (id, estadoActual) => {
     const nuevoEstado = estadoActual === "activo" ? "inactivo" : "activo"
     console.log(`Cambiando estado del producto ${id} de ${estadoActual} a ${nuevoEstado}`)
 
-    const res = await axios.patch(`${VITE_API_URL}/productos/${id}/estado`, {
+    // Modificado para usar el endpoint correcto
+    const res = await axios.patch(`${VITE_API_URL}/productos/${id}`, {
       estado: nuevoEstado,
     })
 

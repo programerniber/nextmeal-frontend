@@ -1,6 +1,6 @@
 "use client"
 
-import { Edit, ImageIcon, DollarSign, Package, TagIcon } from "lucide-react"
+import { Edit, ImageIcon, DollarSign, TagIcon } from "lucide-react"
 
 const ProductoDetailModal = ({ producto, onClose, onEdit }) => {
   // Formatear fecha de registro (si existe)
@@ -40,11 +40,6 @@ const ProductoDetailModal = ({ producto, onClose, onEdit }) => {
       label: "Precio",
       value: formatPrice(producto.precio),
       icon: <DollarSign size={16} className="mr-1 text-green-400" />,
-    },
-    {
-      label: "Stock",
-      value: producto.stock,
-      icon: <Package size={16} className="mr-1 text-blue-400" />,
     },
     {
       label: "Fecha de Creación",
