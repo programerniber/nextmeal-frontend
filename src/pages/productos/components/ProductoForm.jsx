@@ -1,8 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, Save, Package, ImageIcon, DollarSign, TagIcon } from "lucide-react"
-import FormField from "../../categorias/componentes/form/FormField"
+import { X, Save, Package, ImageIcon, DollarSign, TagIcon, AlignLeft, CheckCircle, AlertCircle } from "lucide-react"
 import { createProducto, updateProducto } from "../api/ProductoService"
 import { fetchCategorias } from "../../categorias/api/categoriaService"
 
@@ -11,8 +10,7 @@ const ProductoForm = ({ producto, onClose, onSave }) => {
     nombre: "",
     descripcion: "",
     precio: "",
-    stock: "",
-    categoriaId: "",
+    Id_Categoria: "",
     imagenUrl: "",
     estado: "activo", // Por defecto siempre activo
   }
@@ -24,6 +22,9 @@ const ProductoForm = ({ producto, onClose, onSave }) => {
   const [submitError, setSubmitError] = useState("")
   const [imagePreview, setImagePreview] = useState("")
   const [imageFile, setImageFile] = useState(null)
+  const [currentStep, setCurrentStep] = useState(1)
+  const totalSteps = 2
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -36,10 +37,8 @@ const ProductoForm = ({ producto, onClose, onSave }) => {
     try {
       setLoadingCategorias(true)
       const data = await fetchCategorias()
-      console.log(data)
-      // Filtrar solo categorías activas
-      // const categoriasActivas = data.filter((cat) => cat.estado === "activo")
-      setCategorias(data.data)
+      console.log("Categorías cargadas:", data)
+      setCategorias(data.data || [])
     } catch (error) {
       console.error("Error al cargar categorías:", error)
     } finally {
@@ -53,12 +52,12 @@ const ProductoForm = ({ producto, onClose, onSave }) => {
 
     // Inicializar formulario con datos del producto si existe
     if (producto) {
+      console.log("Inicializando formulario con producto:", producto)
       setFormData({
         nombre: producto.nombre || "",
         descripcion: producto.descripcion || "",
         precio: producto.precio?.toString() || "",
-        stock: producto.stock?.toString() || "",
-        categoriaId: producto.categoriaId || "",
+        Id_Categoria: producto.Id_Categoria || "",
         imagenUrl: producto.imagenUrl || "",
         estado: producto.estado || "activo",
       })
@@ -70,7 +69,7 @@ const ProductoForm = ({ producto, onClose, onSave }) => {
     const { name, value } = e.target
 
     // Validación específica para campos numéricos
-    if (name === "precio" || name === "stock") {
+    if (name === "precio") {
       if (!/^\d*\.?\d*$/.test(value)) {
         return // No actualizar si no son números o punto decimal
       }
@@ -93,6 +92,29 @@ const ProductoForm = ({ producto, onClose, onSave }) => {
     }
   }
 
+  const validateCurrentStep = () => {
+    const newErrors = {}
+
+    if (currentStep === 1) {
+      if (!formData.nombre.trim()) {
+        newErrors.nombre = "El nombre es obligatorio"
+      }
+
+      if (!formData.precio.trim()) {
+        newErrors.precio = "El precio es obligatorio"
+      } else if (isNaN(Number.parseFloat(formData.precio)) || Number.parseFloat(formData.precio) <= 0) {
+        newErrors.precio = "El precio debe ser un número mayor que cero"
+      }
+    } else if (currentStep === 2) {
+      if (!formData.Id_Categoria) {
+        newErrors.Id_Categoria = "Debe seleccionar una categoría"
+      }
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
   const validateForm = async () => {
     const newErrors = {}
 
@@ -106,40 +128,66 @@ const ProductoForm = ({ producto, onClose, onSave }) => {
       newErrors.precio = "El precio debe ser un número mayor que cero"
     }
 
-    if (!formData.stock.trim()) {
-      newErrors.stock = "El stock es obligatorio"
-    } else if (isNaN(Number.parseInt(formData.stock)) || Number.parseInt(formData.stock) < 0) {
-      newErrors.stock = "El stock debe ser un número entero no negativo"
+    if (!formData.Id_Categoria) {
+      newErrors.Id_Categoria = "Debe seleccionar una categoría"
     }
 
-    if (!formData.Id_Categoria) {
-      setError("Debe seleccionar una categoría")
-      return
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const nextStep = () => {
+    if (validateCurrentStep()) {
+      setCurrentStep((prev) => Math.min(prev + 1, totalSteps))
     }
+  }
+
+  const prevStep = () => {
+    setCurrentStep((prev) => Math.max(prev - 1, 1))
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+
+    if (!validateForm()) return
+
+    setIsSubmitting(true)
+    setSubmitError("")
 
     try {
-      setLoading(prev => ({ ...prev, submit: true }))
-
+      // Preparar los datos para enviar
       const productoData = {
-        nombre: formData.nombre.trim(),
-        precio: formData.precio,
-        cantidad: parseInt(formData.cantidad),
-        descripcion: formData.descripcion?.trim(),
+        nombre: formData.nombre,
+        descripcion: formData.descripcion,
+        precio: Number.parseFloat(formData.precio),
+        Id_Categoria: Number.parseInt(formData.Id_Categoria),
         estado: formData.estado,
-        Id_Categoria: formData.Id_Categoria  
+        imagenUrl: formData.imagenUrl,
       }
-      
 
-      if (producto) {
-        await updateProducto(producto.id, productoData)
-        
+      console.log("Datos a enviar:", productoData)
 
+      let resultado
+      if (producto && producto.id) {
+        resultado = await updateProducto(producto.id, productoData)
+        setShowSuccessMessage(true)
+
+        // Mostrar mensaje de éxito por 2 segundos antes de cerrar
+        setTimeout(() => {
+          if (typeof onSave === "function") {
+            onSave(resultado)
+          }
+          onClose()
+        }, 2000)
       } else {
-        await createProducto(productoData)
-        
-        
+        resultado = await createProducto(productoData)
+        if (typeof onSave === "function") {
+          onSave(resultado)
+        }
+        onClose()
       }
-      onSave()
+
+      console.log("Respuesta del servidor:", resultado)
     } catch (error) {
       console.error("Error al guardar producto:", error)
       setSubmitError(error.message || "Error al guardar el producto")
@@ -147,6 +195,197 @@ const ProductoForm = ({ producto, onClose, onSave }) => {
       setIsSubmitting(false)
     }
   }
+
+  const formFieldsByStep = {
+    1: [
+      {
+        type: "text",
+        name: "nombre",
+        label: "Nombre del producto",
+        value: formData.nombre,
+        error: errors.nombre,
+        icon: <Package size={18} className="text-orange-400" />,
+      },
+      {
+        type: "textarea",
+        name: "descripcion",
+        label: "Descripción (opcional)",
+        value: formData.descripcion,
+        error: errors.descripcion,
+        icon: <AlignLeft size={18} className="text-orange-400" />,
+      },
+      {
+        type: "text",
+        name: "precio",
+        label: "Precio",
+        value: formData.precio,
+        error: errors.precio,
+        icon: <DollarSign size={18} className="text-orange-400" />,
+      },
+    ],
+    2: [
+      {
+        type: "select",
+        name: "Id_Categoria",
+        label: "Categoría",
+        value: formData.Id_Categoria,
+        error: errors.Id_Categoria,
+        icon: <TagIcon size={18} className="text-orange-400" />,
+        options: categorias.map((cat) => ({ value: cat.id, label: cat.nombre })),
+        loading: loadingCategorias,
+      },
+      {
+        type: "select",
+        name: "estado",
+        label: "Estado",
+        value: formData.estado,
+        options: [
+          { value: "activo", label: "Activo" },
+          { value: "inactivo", label: "Inactivo" },
+        ],
+        icon:
+          formData.estado === "activo" ? (
+            <CheckCircle size={18} className="text-green-400" />
+          ) : (
+            <AlertCircle size={18} className="text-red-400" />
+          ),
+      },
+      {
+        type: "image",
+        name: "imagen",
+        label: "Imagen (opcional)",
+        preview: imagePreview,
+      },
+    ],
+  }
+
+  const renderFormField = (field) => {
+    if (field.type === "select") {
+      return (
+        <div key={field.name} className="mb-4">
+          <label className="block text-gray-300 mb-1.5 font-medium text-sm">{field.label}</label>
+          <div className="relative">
+            {field.icon && (
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">{field.icon}</div>
+            )}
+            <select
+              name={field.name}
+              value={field.value}
+              onChange={handleChange}
+              className={`w-full bg-gray-800 text-white border ${
+                field.error ? "border-red-500" : "border-gray-700"
+              } rounded-lg ${field.icon ? "pl-10" : "pl-3"} p-2.5`}
+              disabled={isSubmitting || field.loading}
+            >
+              <option value="">Seleccionar {field.label.toLowerCase()}</option>
+              {field.options &&
+                field.options.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+            </select>
+          </div>
+          {field.error && <p className="mt-1 text-sm text-red-500">{field.error}</p>}
+          {field.loading && <p className="mt-1 text-sm text-gray-400">Cargando opciones...</p>}
+        </div>
+      )
+    }
+
+    if (field.type === "textarea") {
+      return (
+        <div key={field.name} className="mb-4">
+          <label className="block text-gray-300 mb-1.5 font-medium text-sm">{field.label}</label>
+          <textarea
+            name={field.name}
+            value={field.value}
+            onChange={handleChange}
+            className={`w-full bg-gray-800 text-white border ${
+              field.error ? "border-red-500" : "border-gray-700"
+            } rounded-lg p-2.5`}
+            rows="3"
+            disabled={isSubmitting}
+          ></textarea>
+          {field.error && <p className="mt-1 text-sm text-red-500">{field.error}</p>}
+        </div>
+      )
+    }
+
+    if (field.type === "image") {
+      return (
+        <div key={field.name} className="mb-4">
+          <label className="block text-gray-300 mb-1.5 font-medium text-sm">{field.label}</label>
+          <div className="flex items-center space-x-4">
+            <div className="relative w-24 h-24 bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
+              {field.preview ? (
+                <img src={field.preview || "/placeholder.svg"} alt="Preview" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-500">
+                  <ImageIcon size={32} />
+                </div>
+              )}
+            </div>
+            <div className="flex-1">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-500 file:text-white hover:file:bg-orange-600 transition-colors"
+                disabled={isSubmitting}
+              />
+              <p className="text-xs text-gray-500 mt-1">Formatos: JPG, PNG, GIF</p>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div key={field.name} className="mb-4">
+        <label className="block text-gray-300 mb-1.5 font-medium text-sm">{field.label}</label>
+        <div className="relative">
+          {field.icon && (
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">{field.icon}</div>
+          )}
+          <input
+            type={field.type}
+            name={field.name}
+            value={field.value}
+            onChange={handleChange}
+            className={`w-full bg-gray-800 text-white border ${
+              field.error ? "border-red-500" : "border-gray-700"
+            } rounded-lg ${field.icon ? "pl-10" : "pl-3"} p-2.5`}
+            disabled={isSubmitting}
+          />
+        </div>
+        {field.error && <p className="mt-1 text-sm text-red-500">{field.error}</p>}
+      </div>
+    )
+  }
+
+  const FormSteps = () => (
+    <div className="flex justify-center mb-6">
+      {Array.from({ length: totalSteps }, (_, i) => i + 1).map((step) => (
+        <div key={step} className="flex items-center">
+          <div
+            className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-sm
+              ${
+                currentStep === step
+                  ? "bg-orange-500 shadow-lg shadow-orange-500/30"
+                  : currentStep > step
+                    ? "bg-green-500 shadow-lg shadow-green-500/30"
+                    : "bg-gray-700"
+              }`}
+          >
+            {step}
+          </div>
+          {step < totalSteps && (
+            <div className={`w-12 h-1 ${currentStep > step ? "bg-green-500" : "bg-gray-700"}`}></div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
@@ -175,134 +414,63 @@ const ProductoForm = ({ producto, onClose, onSave }) => {
             </div>
           )}
 
-          <form onSubmit={validateForm}>
-            <FormField
-              type="text"
-              name="nombre"
-              label="Nombre del producto"
-              value={formData.nombre}
-              error={errors.nombre}
-              onChange={handleChange}
-              icon={<Package size={18} className="text-orange-400" />}
-              disabled={isSubmitting}
-            />
-
-            <FormField
-              type="textarea"
-              name="descripcion"
-              label="Descripción (opcional)"
-              value={formData.descripcion}
-              onChange={handleChange}
-              disabled={isSubmitting}
-            />
-
-            <div className="grid grid-cols-1 gap-4 mb-4">
-              <FormField
-                type="text"
-                name="precio"
-                label="Precio"
-                value={formData.precio}
-                error={errors.precio}
-                onChange={handleChange}
-                icon={<DollarSign size={18} className="text-orange-400" />}
-                disabled={isSubmitting}
-              />
-
-              {/* <FormField
-                type="text"
-                name="stock"
-                label="Stock"
-                value={formData.stock}
-                error={errors.stock}
-                onChange={handleChange}
-                disabled={isSubmitting}
-              /> */}
+          {/* Mensaje de éxito */}
+          {showSuccessMessage && (
+            <div className="bg-green-900 text-white p-3 rounded-lg mb-4 border border-green-500 text-sm flex items-center">
+              <CheckCircle size={18} className="mr-2 text-green-400" />
+              Producto actualizado correctamente
             </div>
+          )}
 
-            <div className="mb-4">
-              <label className="block text-gray-300 mb-1.5 font-medium text-sm">Categoría</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <TagIcon size={18} className="text-orange-400" />
-                </div>
-                <select
-                  name="categoriaId"
-                  value={formData.categoriaId}
-                  onChange={handleChange}
-                  className={`w-full bg-gray-800 text-white border ${
-                    errors.categoriaId ? "border-red-500" : "border-gray-700"
-                  } rounded-lg pl-10 p-2.5`}
-                  disabled={isSubmitting || loadingCategorias}
+          <FormSteps />
+
+          <form onSubmit={handleSubmit}>
+            {formFieldsByStep[currentStep].map(renderFormField)}
+
+            <div className="flex justify-between mt-6">
+              {currentStep > 1 ? (
+                <button
+                  type="button"
+                  onClick={prevStep}
+                  className="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
+                  disabled={isSubmitting}
                 >
-                  <option value="">Seleccionar categoría</option>
-                  {categorias.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {errors.categoriaId && <p className="mt-1 text-sm text-red-500">{errors.categoriaId}</p>}
-              {loadingCategorias && <p className="mt-1 text-sm text-gray-400">Cargando categorías...</p>}
-            </div>
+                  Atrás
+                </button>
+              ) : (
+                <div />
+              )}
 
-            <div className="mb-4">
-              <label className="block text-gray-300 mb-1.5 font-medium text-sm">Imagen</label>
-              <div className="flex items-center space-x-4">
-                <div className="relative w-24 h-24 bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
-                  {imagePreview ? (
-                    <img
-                      src={imagePreview || "/placeholder.svg"}
-                      alt="Preview"
-                      className="w-full h-full object-cover"
-                    />
+              {currentStep < totalSteps ? (
+                <button
+                  type="button"
+                  onClick={nextStep}
+                  className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600"
+                  disabled={isSubmitting}
+                >
+                  Siguiente
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  className={`px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 border border-green-500 ${
+                    isSubmitting ? "opacity-70 cursor-not-allowed" : ""
+                  }`}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+                      Guardando...
+                    </>
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-500">
-                      <ImageIcon size={32} />
-                    </div>
+                    <>
+                      <Save size={16} />
+                      Guardar
+                    </>
                   )}
-                </div>
-                <div className="flex-1">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-500 file:text-white hover:file:bg-orange-600 transition-colors"
-                    disabled={isSubmitting}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Formatos: JPG, PNG, GIF</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-3 mt-6">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors border border-gray-700"
-                disabled={isSubmitting}
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className={`px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2 border border-orange-500 ${
-                  isSubmitting ? "opacity-70 cursor-not-allowed" : ""
-                }`}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <>
-                    <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-                    Guardando...
-                  </>
-                ) : (
-                  <>
-                    <Save size={16} />
-                    Guardar
-                  </>
-                )}
-              </button>
+                </button>
+              )}
             </div>
           </form>
         </div>

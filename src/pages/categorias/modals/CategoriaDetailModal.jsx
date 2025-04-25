@@ -1,6 +1,6 @@
 "use client"
 
-import { Edit, ImageIcon } from "lucide-react"
+import { Edit, ImageIcon, Calendar, AlignLeft } from "lucide-react"
 
 const CategoriaDetailModal = ({ categoria, onClose, onEdit }) => {
   // Formatear fecha de registro (si existe)
@@ -21,10 +21,15 @@ const CategoriaDetailModal = ({ categoria, onClose, onEdit }) => {
   // Datos a mostrar en el modal
   const categoriaDetails = [
     { label: "Nombre", value: categoria.nombre },
-    { label: "Descripción", value: categoria.descripcion || "Sin descripción" },
+    {
+      label: "Descripción",
+      value: categoria.descripcion || "Sin descripción",
+      icon: <AlignLeft size={16} className="mr-1 text-orange-400" />,
+    },
     {
       label: "Fecha de Creación",
       value: formatDate(categoria.createdAt),
+      icon: <Calendar size={16} className="mr-1 text-orange-400" />,
     },
     {
       label: "Estado",
@@ -34,10 +39,13 @@ const CategoriaDetailModal = ({ categoria, onClose, onEdit }) => {
   ]
 
   // Componente para cada campo de detalle
-  const DetailField = ({ label, value, className, capitalize = false }) => (
+  const DetailField = ({ label, value, className, icon }) => (
     <div className="mb-3">
       <p className="text-gray-400 text-sm">{label}</p>
-      <p className={className || `text-white font-medium${capitalize ? " capitalize" : ""}`}>{value}</p>
+      <p className={className || "text-white font-medium flex items-center"}>
+        {icon && icon}
+        {value}
+      </p>
     </div>
   )
 
@@ -71,7 +79,7 @@ const CategoriaDetailModal = ({ categoria, onClose, onEdit }) => {
                 label={detail.label}
                 value={detail.value}
                 className={detail.className}
-                capitalize={detail.capitalize}
+                icon={detail.icon}
               />
             ))}
           </div>

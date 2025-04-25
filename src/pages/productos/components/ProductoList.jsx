@@ -16,6 +16,7 @@ const ProductoList = ({ productos = [], onEdit, onRefresh }) => {
   const [isUpdating, setIsUpdating] = useState(false)
   const [actionError, setActionError] = useState("")
 
+  // Cambiar de 10 a 5 productos por página
   const itemsPerPage = 5
 
   useEffect(() => {
@@ -141,7 +142,6 @@ const ProductoList = ({ productos = [], onEdit, onRefresh }) => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Nombre</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Categoría</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Precio</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Stock</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Estado</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Acciones</th>
             </tr>
@@ -153,7 +153,6 @@ const ProductoList = ({ productos = [], onEdit, onRefresh }) => {
                   <td className="px-6 py-4 text-white text-sm">{producto.nombre}</td>
                   <td className="px-6 py-4 text-gray-300 text-sm">{producto.categoria?.nombre || "Sin categoría"}</td>
                   <td className="px-6 py-4 text-gray-300 text-sm">{formatPrice(producto.precio)}</td>
-                  <td className="px-6 py-4 text-gray-300 text-sm">{producto.stock}</td>
                   <td className="px-6 py-4">
                     <button
                       onClick={() => handleToggleEstado(producto)}
@@ -205,7 +204,7 @@ const ProductoList = ({ productos = [], onEdit, onRefresh }) => {
               ))
             ) : (
               <tr>
-                <td colSpan="6" className="px-6 py-4 text-center text-gray-400">
+                <td colSpan="5" className="px-6 py-4 text-center text-gray-400">
                   No se encontraron productos
                 </td>
               </tr>
@@ -287,15 +286,15 @@ const ProductoList = ({ productos = [], onEdit, onRefresh }) => {
 
       {isDeleting && (
         <DeleteConfirmModal
-          item={productoToDelete}
-          itemName="el producto"
-          itemField="nombre"
+          title="Eliminar Producto"
+          message={`¿Estás seguro de eliminar el producto ${productoToDelete?.nombre}? Esta acción no se puede deshacer.`}
           onConfirm={confirmDelete}
           onCancel={() => {
             setIsDeleting(false)
             setProductoToDelete(null)
             setActionError("")
           }}
+          isLoading={false}
         />
       )}
     </div>

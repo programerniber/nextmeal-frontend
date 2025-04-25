@@ -11,14 +11,15 @@ axios.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401 || error.response?.status === 403) {
       // Limpiar estado de autenticación
-      localStorage.removeItem('token');
-    // Evitar redirección si ya estamos en la página de login
-    if (error.response?.status === 401 && !window.location.pathname.includes('/login')) {
-      window.location.href = "/login"
+      localStorage.removeItem("token")
+      // Evitar redirección si ya estamos en la página de login
+      if (error.response?.status === 401 && !window.location.pathname.includes("/login")) {
+        window.location.href = "/login"
+      }
     }
     return Promise.reject(error)
-  }
-})
+  },
+)
 
 // Función para iniciar sesión
 export const loginUsuario = async (credentials) => {
@@ -56,13 +57,13 @@ export const logoutUsuario = async () => {
 export const getUsuarioAutenticado = async () => {
   try {
     const response = await axios.get(`${VITE_API_URL}/autenticacion/usuario-autenticado`, {
-      withCredentials: true
-    });
+      withCredentials: true,
+    })
     console.log("Usuario autenticado:", response.data);
-    return response.data.data;
+    return response.data.data
   } catch (error) {
-    console.error("Error al obtener usuario autenticado:", error);
-    throw error;
+    console.error("Error al obtener usuario autenticado:", error)
+    throw error
   }
 }
 
@@ -114,6 +115,37 @@ export const deleteUsuario = async (id) => {
     return response.data
   } catch (error) {
     console.error(`Error al eliminar usuario con ID ${id}:`, error)
+    throw error
+  }
+}
+// Función para cambiar el estado de un usuario - CORREGIDA
+export const toggleUsuarioEstado = async (id, estadoActual) => {
+  try {
+    const nuevoEstado = estadoActual === "activo" ? "inactivo" : "activo"
+    console.log(`Cambiando estado del usuario ${id} de ${estadoActual} a ${nuevoEstado}`)
+
+    // Modificado para usar el endpoint correcto y enviar los datos en el formato esperado
+    const response = await axios.patch(`${VITE_API_URL}/autenticacion/usuarios/${id}`, {
+      estado: nuevoEstado,
+    })
+
+    console.log("Respuesta del servidor:", response.data)
+    return response.data
+  } catch (error) {
+    console.error("Error al cambiar estado del usuario:", error)
+    throw error
+  }
+}
+
+// Función para verificar si un documento o email ya existe
+export const verificarDuplicado = async (campo, valor) => {
+  try {
+    const response = await axios.get(`${VITE_API_URL}/autenticacion/verificar-duplicado`, {
+      params: { campo, valor },
+    })
+    return response.data
+  } catch (error) {
+    console.error(`Error al verificar duplicado de ${campo}:`, error)
     throw error
   }
 }
