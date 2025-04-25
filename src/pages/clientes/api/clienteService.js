@@ -106,31 +106,30 @@ export const deleteCliente = async (id) => {
 // ✅ Cambiar estado del cliente (PUT)
 export const toggleClienteEstado = async (id, estado) => {
   try {
-    const nuevoEstado = estado === "activo" ? "inactivo" : "activo"
-    console.log(`Cambiando estado del cliente ${id} de ${estado} a ${nuevoEstado}`)
-
+    const nuevoEstado = estado === "activo" ? "inactivo" : "activo";
+    console.log(`Cambiando estado del cliente ${id} de ${estado} a ${nuevoEstado}`);
+    
     const res = await axios.patch(`${VITE_API_URL}/clientes/${id}/estado`, {
       estado: nuevoEstado,
-    })
-
-    console.log("Respuesta completa al cambiar estado:", res)
-
-    if (res.data && res.data.data) {
-      return res.data.data
-    } else if (res.data) {
-      return res.data
+    });
+    
+    console.log("Respuesta completa al cambiar estado:", res);
+    
+    // Verifica la estructura de la respuesta
+    if (res && res.data && res.data.exito) {
+      // Devuelve los datos actualizados del cliente o al menos el estado actualizado
+      return res.data.data || { id, estado: nuevoEstado };
     }
-
-    return { id, estado: nuevoEstado }
+    
+    return { id, estado: nuevoEstado };
   } catch (error) {
-    console.error("Error al cambiar estado del cliente:", error)
+    console.error("Error al cambiar estado del cliente:", error);
     if (error.response) {
-      console.error("Detalles del error:", error.response.data)
+      console.error("Detalles del error:", error.response.data);
       if (error.response.data.mensaje) {
-        error.message = error.response.data.mensaje
+        error.message = error.response.data.mensaje;
       }
     }
-    throw error
+    throw error;
   }
-}
-
+};

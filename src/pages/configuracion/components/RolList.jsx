@@ -51,11 +51,16 @@ const RolList = ({ onEditRol, refreshTrigger }) => {
   }, [refreshTrigger])
 
   const tienePermiso = (rolId, modulo, accion) => {
-    if (!permisosPorRol[rolId]) return false
-
-    return permisosPorRol[rolId].some(
+    if (!permisosPorRol[rolId]) return false;
+    
+    // Si permisosPorRol[rolId] es un objeto con propiedad 'permisos'
+    const permisosArray = Array.isArray(permisosPorRol[rolId]) 
+      ? permisosPorRol[rolId] 
+      : (permisosPorRol[rolId].permisos || []);
+    
+    return permisosArray.some(
       (permiso) => permiso.recurso === modulo && permiso.accion === accion && permiso.activo,
-    )
+    );
   }
 
   const handleVerPermisos = (rol) => {
