@@ -16,7 +16,7 @@ const PedidoForm = ({ pedido, onClose, onSave }) => {
 
   const [formData, setFormData] = useState(initialFormData)
   const [errors, setErrors] = useState({})
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false) 
   const [submitError, setSubmitError] = useState("")
   const [clientes, setClientes] = useState([])
   const [productos, setProductos] = useState([])

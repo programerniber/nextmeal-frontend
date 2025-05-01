@@ -14,6 +14,7 @@ import Pedido from "./pages/pedidos/pedido"
 import Categoria from "./pages/categorias/categoria"
 import Productos from "./pages/productos/productos"
 import Usuario from "./pages/usuarios/usuario"
+import Venta from "./pages/ventas/venta"
 import Configuracion from "./pages/configuracion/configuracion"
 import { SidebarProvider } from "./components/layout/sidebarContext"
 import LoginPage from "./pages/usuarios/Login"
@@ -139,7 +140,7 @@ function AppContent() {
               path="/ventas"
               element={
                 <ProtectedRoute>
-                  <Ventas />
+                  <Venta />
                 </ProtectedRoute>
               }
             />
@@ -205,8 +206,6 @@ function Dashboard() {
   )
 }
 
-function Ventas() {
-  return <h1 className="text-2xl">Ventas</h1>
-}
+
 
 export default App

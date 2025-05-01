@@ -2,10 +2,10 @@ import axios from "axios";
 
 const VITE_API_URL = "http://localhost:3000/api";
 
-// ✅ Crear pedido (POST)
+//  Crear pedido (POST)
 export const createPedido = async (pedidoData) => {
   try {
-    const res = await axios.post(`${VITE_API_URL}/pedidos`, pedidoData); // ✅ CORRECTO
+    const res = await axios.post(`${VITE_API_URL}/pedidos`, pedidoData); 
     return res.data.data;
   } catch (error) {
     if (error.response?.data?.errores) {
@@ -28,7 +28,7 @@ export const createPedido = async (pedidoData) => {
   }
 };
 
-// ✅ Obtener todos los pedidos (GET)
+//  Obtener todos los pedidos (GET)
 export const fetchPedidos = async () => {
   try {
     const res = await axios.get(`${VITE_API_URL}/pedidos/pedido`);
@@ -40,7 +40,7 @@ export const fetchPedidos = async () => {
 };
 
 
-// ✅ Actualizar pedido por ID (PUT)
+//  Actualizar pedido por ID (PUT)
 export const updatePedido = async (id, pedidoData) => {
   try {
     const res = await axios.put(`${VITE_API_URL}/pedidos/${id}`, pedidoData);
@@ -50,7 +50,7 @@ export const updatePedido = async (id, pedidoData) => {
   }
 };
 
-// ✅ Eliminar pedido por ID (DELETE)
+//  Eliminar pedido por ID (DELETE)
 export const deletePedido = async (id) => {
   try {
     console.log(`Eliminando pedido con ID: ${id}`);
@@ -61,7 +61,7 @@ export const deletePedido = async (id) => {
   }
 };
 
-// ✅ Cambiar estado del pedido (PATCH)
+//  Cambiar estado del pedido (PATCH)
 export const togglePedidoEstado = async (id, nuevoEstado) => {
   try {
     const nuevoestado =
@@ -71,8 +71,6 @@ export const togglePedidoEstado = async (id, nuevoEstado) => {
     const res = await axios.patch(`${VITE_API_URL}/pedidos/${id}/estado`, {
       estado: nuevoEstado,
     });
-
-    console.log("Estado del pedido actualizado:", res.data.data);
     return res.data.data;
   } catch (error) {
     console.error("Error al cambiar estado del pedido", error);
@@ -83,7 +81,7 @@ export const togglePedidoEstado = async (id, nuevoEstado) => {
   }
 };
 
-// ✅ Obtener todos los clientes (GET)
+//  Obtener todos los clientes (GET)
 export const fetchClientes = async () => {
   try {
     const res = await axios.get(`${VITE_API_URL}/clientes`);
@@ -102,8 +100,8 @@ export const fetchClientesPedidos = async () => {
     throw error;
   }
 };
-
-// ✅ Obtener todos los productos (GET)
+ 
+//  Obtener todos los productos (GET)
 export const fetchProductos = async () => {
   try {
     const res = await axios.get(`${VITE_API_URL}/productos`);
