@@ -2,10 +2,8 @@
 
 import { createContext, useContext, useState, useEffect } from "react"
 import { getUsuarioAutenticado, loginUsuario, logoutUsuario } from "../api/usuarioService.js"
-import { useNavigate } from "react-router-dom"
 
-
-export const AuthContext = createContext();
+export const AuthContext = createContext()
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
@@ -13,69 +11,99 @@ export const AuthProvider = ({ children }) => {
   const [errors, setErrors] = useState([])
   const [loading, setLoading] = useState(false)
   const [isLoadingAuth, setIsLoadingAuth] = useState(true)
-  const navigate = useNavigate()
+
+  // Función para navegar sin depender de react-router-dom
+  const navigateTo = (path) => {
+    window.location.href = path
+  }
 
   // Verificar autenticación al cargar la aplicación
-useEffect(() => {
+  useEffect(() => {
     const checkAuth = async () => {
       try {
-        const userData = await getUsuarioAutenticado();
-        if (!userData) throw new Error("No user data");
-        
-        setUser(userData);
-        setIsAuthenticated(true);
-        
-        // Redirigir a dashboard si está en login y autenticado
-        if (window.location.pathname === '/login') {
-          navigate("/dashboard");
+        // Intentar obtener usuario del localStorage primero para UI inmediata
+        const storedUser = localStorage.getItem("user")
+        if (storedUser) {
+          setUser(JSON.parse(storedUser))
+          setIsAuthenticated(true)
         }
-      } catch {
-        setUser(null);
-        setIsAuthenticated(false);
-        localStorage.removeItem('token');
+
+        // Luego verificar con el servidor
+        const userData = await getUsuarioAutenticado()
+
+        if (userData) {
+          setUser(userData)
+          setIsAuthenticated(true)
+          localStorage.setItem("user", JSON.stringify(userData))
+
+          // Redirigir a dashboard si está en login y autenticado
+          if (window.location.pathname === "/login") {
+            navigateTo("/dashboard")
+          }
+        }
+      } catch (error) {
+        console.error("Error al verificar autenticación:", error)
+        setUser(null)
+        setIsAuthenticated(false)
+        localStorage.removeItem("user")
+        localStorage.removeItem("token")
       } finally {
-        setIsLoadingAuth(false);
+        setIsLoadingAuth(false)
       }
-    };
-  
-    checkAuth();
-  }, [navigate]);
+    }
+
+    checkAuth()
+  }, [])
 
   // Función para iniciar sesión
   const signin = async (credentials) => {
-    setLoading(true);
-    setErrors([]);
+    setLoading(true)
+    setErrors([])
     try {
-      // 1. Primero hacer login
-      await loginUsuario(credentials);
-      console.log(credentials);
-      // Pequeña pausa para asegurar que la cookie se establezca
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // 2. Luego obtener datos del usuario
-      const userData = await getUsuarioAutenticado();
-      
-      setUser(userData);
-      setIsAuthenticated(true);
-      navigate("/dashboard");
+      // Hacer login y obtener token y datos del usuario
+      const response = await loginUsuario(credentials)
+      console.log("Respuesta de login:", response)
+
+      if (response.token) {
+        localStorage.setItem("token", response.token)
+      }
+
+      if (response.usuario) {
+        setUser(response.usuario)
+        setIsAuthenticated(true)
+        localStorage.setItem("user", JSON.stringify(response.usuario))
+        navigateTo("/dashboard")
+        return response
+      } else {
+        throw new Error("No se recibieron datos de usuario")
+      }
     } catch (error) {
-      console.error("Error al iniciar sesión:", error);
-      setErrors([error.response?.data?.mensaje || "Credenciales incorrectas"]);
-      setIsAuthenticated(false);
+      console.error("Error al iniciar sesión:", error)
+      setErrors([error.response?.data?.mensaje || "Credenciales incorrectas"])
+      setIsAuthenticated(false)
+      throw error
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
-  
+
   // Función para cerrar sesión
   const signout = async () => {
     try {
       await logoutUsuario()
       setUser(null)
       setIsAuthenticated(false)
-      navigate("/login")
+      localStorage.removeItem("user")
+      localStorage.removeItem("token")
+      navigateTo("/login")
     } catch (error) {
       console.error("Error al cerrar sesión:", error)
+      // Limpiar datos de todas formas
+      setUser(null)
+      setIsAuthenticated(false)
+      localStorage.removeItem("user")
+      localStorage.removeItem("token")
+      navigateTo("/login")
     }
   }
 
@@ -88,7 +116,16 @@ useEffect(() => {
   // Verificar si el usuario tiene un permiso específico
   const hasPermission = (recurso, accion) => {
     if (!user || !user.permisos) return false
-    return user.permisos.some((p) => p.recurso === recurso && p.accion === accion)
+
+    // Si es administrador, tiene todos los permisos
+    if (user.id_rol === 1) return true
+
+    return user.permisos.some((p) => {
+      if (typeof p === "string") {
+        return p === recurso
+      }
+      return p.recurso === recurso && p.accion === accion
+    })
   }
 
   return (
@@ -103,6 +140,7 @@ useEffect(() => {
         signout,
         hasRole,
         hasPermission,
+        navigateTo,
       }}
     >
       {children}

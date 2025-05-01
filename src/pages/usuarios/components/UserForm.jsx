@@ -242,7 +242,6 @@ const UserForm = ({ usuario, onClose, onSave }) => {
         options: [
           { value: 1, label: "Administrador" },
           { value: 2, label: "Empleado" },
-          { value: 3, label: "Cliente" },
         ],
       },
       {

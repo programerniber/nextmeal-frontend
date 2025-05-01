@@ -105,7 +105,7 @@ export const toggleCategoriaEstado = async (id, estadoActual) => {
     // const nuevoEstado = estadoActual === "activo" ? "inactivo" : "activo"
     // console.log(`Cambiando estado de la categoría ${id} de ${estadoActual} a ${nuevoEstado}`)
 
-    const res = await axios.put(`${VITE_API_URL}/categoria/${id}`, {
+    const res = await axios.patch(`${VITE_API_URL}/categoria/${id}/estado`, {
       estado: !estadoActual,
     })
 

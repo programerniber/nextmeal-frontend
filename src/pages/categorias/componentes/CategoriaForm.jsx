@@ -101,20 +101,20 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
 
     try {
       // Preparar los datos para enviar
-      const categoriaData = {
+      const categoryData = {
         nombre: formData.nombre,
         descripcion: formData.descripcion,
         estado: formData.estado,
         imagenUrl: formData.imagenUrl,
       }
 
-      console.log("Datos a enviar:", categoriaData)
+      console.log("Datos a enviar:", categoryData)
 
       let resultado
       if (categoria && categoria.id) {
-        resultado = await updateCategoria(categoria.id, categoriaData)
+        resultado = await updateCategoria(categoria.id, categoryData)
       } else {
-        resultado = await createCategoria(categoriaData)
+        resultado = await createCategoria(categoryData)
       }
 
       console.log("Respuesta del servidor:", resultado)

@@ -110,7 +110,7 @@ const CategoriaList = ({ categorias = [], onEdit, onRefresh }) => {
         <Search className="text-gray-400 ml-2" size={20} />
         <input
           type="text"
-          placeholder="Buscar por nombre o descripción..."
+          placeholder="Buscar por nombre..."
           className="w-full bg-transparent border-none text-white focus:outline-none px-3 py-2"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
