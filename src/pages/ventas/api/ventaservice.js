@@ -30,7 +30,7 @@ export const createVenta = async (ventaData) => {
   try {
     const response = await axios.post(`${VITE_API_URL}/ventas`, ventaData)
     
-    return response?.data?.data;
+    return response?.data.data;
 
   } catch (error) {
     console.error("Error al crear venta:", error)
@@ -39,9 +39,9 @@ export const createVenta = async (ventaData) => {
 }
 
 // Actualizar una venta existente
-export const updateVenta = async (id, ventaData) => {
+export const updateVenta = async (id,ventaData) => {
   try {
-    const response = await axios.put(`${VITE_API_URL}/ventas/${id}`, ventaData)
+    const response = await axios.put(`${VITE_API_URL}/ventas/${id}/metodo-pago`,ventaData)
     return response?.data?.data
   } catch (error) {
     console.error(`Error al actualizar venta con ID ${id}:`, error)
