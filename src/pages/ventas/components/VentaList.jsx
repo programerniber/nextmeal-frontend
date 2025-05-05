@@ -52,7 +52,7 @@ const VentaList = ({ onEdit, onDelete, onRefresh }) => {
 
   useEffect(() => {
     loadVentas()
-  }, [])
+  }, [onRefresh])
 
   const loadVentas = async () => {
     try {
