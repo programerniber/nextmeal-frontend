@@ -102,16 +102,29 @@ export const deleteCategoria = async (id) => {
 // ✅ Cambiar estado de la categoría (PATCH)
 export const toggleCategoriaEstado = async (id, estadoActual) => {
   try {
-    // const nuevoEstado = estadoActual === "activo" ? "inactivo" : "activo"
-    // console.log(`Cambiando estado de la categoría ${id} de ${estadoActual} a ${nuevoEstado}`)
+    const nuevoEstado = estadoActual === "activo" ? "inactivo" : "activo"
+    console.log(`Cambiando estado de la categoría ${id} de ${estadoActual} a ${nuevoEstado}`)
 
-    const res = await axios.patch(`${VITE_API_URL}/categoria/${id}/estado`, {
-      estado: !estadoActual,
-    })
+    // Intentar con PATCH primero
+    try {
+      const res = await axios.patch(`${VITE_API_URL}/categoria/${id}/estado`, {
+        estado: nuevoEstado,
+      })
+      console.log("Respuesta del servidor (PATCH):", res.data)
+      return res.data
+    } catch (patchError) {
+      // Si falla el PATCH, intentar con PUT como fallback
+      console.log("PATCH falló, intentando con PUT como fallback:", patchError.message)
 
-    return res.data
+      const res = await axios.put(`${VITE_API_URL}/categoria/${id}`, {
+        estado: nuevoEstado,
+      })
+
+      console.log("Respuesta del servidor (fallback):", res.data)
+      return res.data
+    }
   } catch (error) {
-    console.error("Error al cambiar estado de la categoría", error)
+    console.error("Error al cambiar estado de la categoría:", error)
     if (error.response?.data?.mensaje) {
       error.message = error.response.data.mensaje
     }

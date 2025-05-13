@@ -1,5 +1,5 @@
 "use client"
-
+import { toast } from "react-toastify"
 import { useState, useEffect } from "react"
 import { Edit, Trash2, Search, RefreshCw, Eye, ChevronLeft, ChevronRight, ToggleLeft, ToggleRight } from "lucide-react"
 import { deleteCategoria, toggleCategoriaEstado } from "../api/categoriaService"
@@ -22,7 +22,7 @@ const CategoriaList = ({ categorias = [], onEdit, onRefresh }) => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm)
       setCurrentPage(1)
-    }, 300)
+    }, 2000)
     return () => clearTimeout(timer)
   }, [searchTerm])
 
@@ -59,8 +59,8 @@ const CategoriaList = ({ categorias = [], onEdit, onRefresh }) => {
   const confirmDelete = async () => {
     try {
       setActionError("")
-      console.log("Eliminando categoría:", categoriaToDelete)
       await deleteCategoria(categoriaToDelete.id)
+      toast.success(`Categoría ${categoriaToDelete.nombre} eliminada exitosamente`)
       if (typeof onRefresh === "function") {
         onRefresh()
       }
@@ -76,8 +76,9 @@ const CategoriaList = ({ categorias = [], onEdit, onRefresh }) => {
     try {
       setIsUpdating(true)
       setActionError("")
-      console.log("Cambiando estado de la categoría:", categoria)
       await toggleCategoriaEstado(categoria.id, categoria.estado)
+      toast.success(
+        `Categoría ${categoria.nombre} ${categoria.estado === "activo" ? "inactivo" : "activo"} correctamente`)
       if (typeof onRefresh === "function") {
         onRefresh()
       }
@@ -162,7 +163,7 @@ const CategoriaList = ({ categorias = [], onEdit, onRefresh }) => {
                       }`}
                       title={`Cambiar a ${!categoria.estado? "inactivo" : "activo"}`}
                     >
-                      {categoria.estado? (
+                      {categoria.estado == "activo"? (
                         <>
                           <ToggleRight size={16} className="mr-1" /> Activo
                         </>

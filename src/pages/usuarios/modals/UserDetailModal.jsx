@@ -2,7 +2,7 @@
 
 import { X, User, Mail, Shield, Calendar, CreditCard, CheckCircle, AlertCircle } from "lucide-react"
 
-const UserDetailModal = ({ usuario, onClose }) => {
+const UserDetailModal = ({ usuario, onClose, renderRol, roles }) => {
   // Formatear fecha de registro (si existe)
   const formatDate = (dateString) => {
     if (!dateString) return "No registrada"
@@ -18,19 +18,19 @@ const UserDetailModal = ({ usuario, onClose }) => {
     }
   }
 
-  // Función para renderizar el rol del usuario
-  const renderRol = (rolId) => {
-    switch (rolId) {
-      case 1:
-        return <span className="bg-purple-900 text-purple-300 px-2 py-1 rounded-full text-xs">Administrador</span>
-      case 2:
-        return <span className="bg-blue-900 text-blue-300 px-2 py-1 rounded-full text-xs">Empleado</span>
-      case 3:
-        return <span className="bg-green-900 text-green-300 px-2 py-1 rounded-full text-xs">Cliente</span>
-      default:
-        return <span className="bg-gray-700 text-gray-300 px-2 py-1 rounded-full text-xs">Sin rol</span>
-    }
-  }
+  // // Función para renderizar el rol del usuario
+  // const renderRol = (rolId) => {
+  //   switch (rolId) {
+  //     case 1:
+  //       return <span className="bg-purple-900 text-purple-300 px-2 py-1 rounded-full text-xs">Administrador</span>
+  //     case 2:
+  //       return <span className="bg-blue-900 text-blue-300 px-2 py-1 rounded-full text-xs">Empleado</span>
+  //     case 3:
+  //       return <span className="bg-green-900 text-green-300 px-2 py-1 rounded-full text-xs">Cliente</span>
+  //     default:
+  //       return <span className="bg-gray-700 text-gray-300 px-2 py-1 rounded-full text-xs">Sin rol</span>
+  //   }
+  // }
 
   // Datos a mostrar en el modal
   const usuarioDetails = [
@@ -51,7 +51,7 @@ const UserDetailModal = ({ usuario, onClose }) => {
     },
     {
       label: "Rol",
-      value: renderRol(usuario.id_rol),
+      value: renderRol(usuario.id_rol, roles),
       icon: <Shield size={16} className="mr-1 text-orange-400" />,
       isComponent: true,
     },

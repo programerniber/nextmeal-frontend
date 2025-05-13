@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react"
 import { X, Save, User, Mail, Lock, Shield, CheckCircle, AlertCircle, CreditCard } from "lucide-react"
-import { createUsuario, updateUsuario, verificarDuplicado } from "../api/usuarioService"
+import { createUsuario, updateUsuario, verificarDuplicado, fetchRoles } from "../api/usuarioService"
+
+import { toast } from "react-toastify"
 
 const UserForm = ({ usuario, onClose, onSave }) => {
   const initialFormData = {
@@ -13,7 +15,8 @@ const UserForm = ({ usuario, onClose, onSave }) => {
     id_rol: 2, // Valor por defecto para empleado
     estado: "activo",
   }
-
+  const [roles, setRoles] = useState([])
+  const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState(initialFormData)
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -28,13 +31,34 @@ const UserForm = ({ usuario, onClose, onSave }) => {
       setFormData({
         nombre: usuario.nombre || "",
         email: usuario.email || "",
-        cedula: usuario.cedula || "",
+        cedula: usuario.cedula || "no carga",
         password: "", // No mostrar contraseña actual por seguridad
         id_rol: usuario.id_rol || 2,
         estado: usuario.estado || "activo",
       })
     }
   }, [usuario])
+
+  useEffect(() => {
+    const cargarRoles = async () => {
+      try {
+        setLoading(true)
+        const rolesData = await fetchRoles()
+        console.log("Roles cargados:", rolesData)
+        setRoles(Array.isArray(rolesData) ? rolesData : [])
+      } catch (error) {
+        console.error("Error al cargar roles:", error)
+        toast.error("Error al cargar roles: " + (error.message || "Error desconocido"))
+        // Establecer roles vacíos para evitar errores en la interfaz
+        setRoles([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    cargarRoles()
+  }, [])
+
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -157,16 +181,16 @@ const UserForm = ({ usuario, onClose, onSave }) => {
       if (usuario) {
         savedUsuario = await updateUsuario(usuario.id, dataToSend)
         setShowSuccessMessage(true)
+        toast.success(`Usuario ${formData.nombre} actualizado correctamente`)
 
         // Mostrar mensaje de éxito por 2 segundos antes de cerrar
-        setTimeout(() => {
-          if (typeof onSave === "function") {
-            onSave(savedUsuario)
-          }
-          onClose()
-        }, 2000)
+        if (typeof onSave === "function") {
+          onSave(savedUsuario)
+        }
+        onClose()
       } else {
         savedUsuario = await createUsuario(dataToSend)
+        toast.success(`Usuario ${formData.nombre} creado correctamente`)
 
         if (typeof onSave === "function") {
           onSave(savedUsuario)
@@ -174,8 +198,7 @@ const UserForm = ({ usuario, onClose, onSave }) => {
         onClose()
       }
     } catch (error) {
-      console.error("Error al guardar usuario:", error)
-      setSubmitError(error.message || "Error al guardar el usuario")
+      toast.error(error.message || "Error al guardar el usuario")
       setFormSubmitted(false)
     } finally {
       setIsSubmitting(false)
@@ -239,10 +262,8 @@ const UserForm = ({ usuario, onClose, onSave }) => {
         value: formData.id_rol,
         error: errors.id_rol,
         icon: <Shield size={18} className="text-orange-400" />,
-        options: [
-          { value: 1, label: "Administrador" },
-          { value: 2, label: "Empleado" },
-        ],
+        options: roles.length > 0 ? roles.map((rol) => ({ value: rol.id, label: rol.nombre })) : [],
+        loading: loading,
       },
       {
         type: "select",
@@ -276,9 +297,9 @@ const UserForm = ({ usuario, onClose, onSave }) => {
               name={field.name}
               value={field.value}
               onChange={handleChange}
-              className={`bg-gray-800 text-white ${field.icon ? "pl-10" : "pl-3"} w-full p-2 rounded-lg border ${
-                field.error ? "border-red-500" : "border-gray-700"
-              } focus:border-orange-500 focus:outline-none`}
+              className={`bg-gray-800 text-white ${field.icon ? "pl-10" : "pl-3"} w-full p-2 rounded-lg border ${field.error ? "border-red-500" : "border-gray-700"
+                } focus:border-orange-500 focus:outline-none`}
+              disabled={field.loading}
             >
               {field.options.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -288,6 +309,7 @@ const UserForm = ({ usuario, onClose, onSave }) => {
             </select>
           </div>
           {field.error && <p className="text-red-500 text-xs mt-1">{field.error}</p>}
+          {field.loading && <p className="text-gray-400 text-xs mt-1">Cargando opciones...</p>}
         </div>
       )
     }
@@ -308,9 +330,8 @@ const UserForm = ({ usuario, onClose, onSave }) => {
             maxLength={field.maxLength}
             pattern={field.pattern}
             inputMode={field.inputMode}
-            className={`bg-gray-800 text-white ${field.icon ? "pl-10" : "pl-3"} w-full p-2 rounded-lg border ${
-              field.error ? "border-red-500" : "border-gray-700"
-            } focus:border-orange-500 focus:outline-none`}
+            className={`bg-gray-800 text-white ${field.icon ? "pl-10" : "pl-3"} w-full p-2 rounded-lg border ${field.error ? "border-red-500" : "border-gray-700"
+              } focus:border-orange-500 focus:outline-none`}
           />
         </div>
         {field.error && <p className="text-red-500 text-xs mt-1">{field.error}</p>}
@@ -324,12 +345,11 @@ const UserForm = ({ usuario, onClose, onSave }) => {
         <div key={step} className="flex items-center">
           <div
             className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-sm
-              ${
-                currentStep === step
-                  ? "bg-orange-500 shadow-lg shadow-orange-500/30"
-                  : currentStep > step
-                    ? "bg-green-500 shadow-lg shadow-green-500/30"
-                    : "bg-gray-700"
+              ${currentStep === step
+                ? "bg-orange-500 shadow-lg shadow-orange-500/30"
+                : currentStep > step
+                  ? "bg-green-500 shadow-lg shadow-green-500/30"
+                  : "bg-gray-700"
               }`}
           >
             {step}
@@ -406,9 +426,8 @@ const UserForm = ({ usuario, onClose, onSave }) => {
                   type="button"
                   onClick={submitForm}
                   disabled={isSubmitting}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white ${
-                    isSubmitting ? "bg-gray-600" : "bg-green-600 hover:bg-green-700"
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white ${isSubmitting ? "bg-gray-600" : "bg-green-600 hover:bg-green-700"
+                    }`}
                 >
                   <Save size={18} />
                   {usuario ? "Actualizar" : "Guardar"}
