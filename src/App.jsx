@@ -8,7 +8,6 @@ import {
 
 import Sidebar from "./components/layout/sidebar"
 import Navbar from "./components/layout/navbar"
-
 import Cliente from "./pages/clientes/cliente"
 import Pedido from "./pages/pedidos/pedido"
 import Categoria from "./pages/categorias/categoria"
@@ -16,6 +15,7 @@ import Productos from "./pages/productos/productos"
 import Usuario from "./pages/usuarios/usuario"
 import Venta from "./pages/ventas/venta"
 import Configuracion from "./pages/configuracion/configuracion"
+import Dashboard from "./pages/dashboard/dashboard" 
 import { SidebarProvider } from "./components/layout/sidebarContext"
 import LoginPage from "./pages/usuarios/Login"
 import { useSidebar } from "./components/layout/sidebarUtils"
@@ -190,21 +190,7 @@ function NotFound() {
   )
 }
 
-function Dashboard() {
-  const { user } = useAuth()
 
-  return (
-    <div className="p-6 bg-gray-900 rounded-lg shadow-lg">
-      <h1 className="text-2xl font-bold text-white mb-4">Dashboard</h1>
-      {user && (
-        <div className="bg-gray-800 p-4 rounded-lg">
-          <p className="text-white">Bienvenido, {user.nombre}</p>
-          <p className="text-gray-400">Rol: {user.id_rol}</p>
-        </div>
-      )}
-    </div>
-  )
-}
 
 
 
