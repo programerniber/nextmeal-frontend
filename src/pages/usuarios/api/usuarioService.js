@@ -24,7 +24,7 @@ axios.interceptors.response.use(
 // Función para iniciar sesión
 export const loginUsuario = async (credentials) => {
   try {
-    const response = await axios.post(`${VITE_API_URL}/autenticacion/login`, credentials)
+    const response = await axios.post(`${VITE_API_URL}/autenticacion/register`, credentials)
     return response.data
   } catch (error) {
     console.error("Error al iniciar sesión:", error)
