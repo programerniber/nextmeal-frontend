@@ -1,9 +1,9 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect } from "react"
-import { getUsuarioAutenticado, loginUsuario, logoutUsuario } from "../api/usuarioService.js"
+import { createContext, useState, useEffect, useContext } from "react"
+import { getUsuarioAutenticado, loginUsuario, logoutUsuario } from "../api/usuarioService"
 
-export const AuthContext = createContext()
+const AuthContext = createContext()
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
@@ -12,7 +12,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(false)
   const [isLoadingAuth, setIsLoadingAuth] = useState(true)
 
-  // Función para navegar sin depender de react-router-dom
+  // Función para navegar sin depender de next/navigation
   const navigateTo = (path) => {
     window.location.href = path
   }

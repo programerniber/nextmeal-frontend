@@ -244,11 +244,11 @@ const ProductoForm = ({ producto, onClose, onSave }) => {
           { value: "inactivo", label: "Inactivo" },
         ],
         icon:
-          formData.estado === "activo" ? (
-            <CheckCircle size={18} className="text-green-400" />
-          ) : (
-            <AlertCircle size={18} className="text-red-400" />
-          ),
+        formData.estado === "activo" ? (
+          <CheckCircle size={18} className="text-green-400" />
+        ) : (
+          <AlertCircle size={18} className="text-red-400" />
+        ),
       },
       {
         type: "image",

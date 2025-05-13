@@ -92,15 +92,26 @@ export const toggleProductoEstado = async (id, estadoActual) => {
     const nuevoEstado = estadoActual === "activo" ? "inactivo" : "activo"
     console.log(`Cambiando estado del producto ${id} de ${estadoActual} a ${nuevoEstado}`)
 
-    // Modificado para usar el endpoint correcto
-    const res = await axios.patch(`${VITE_API_URL}/productos/${id}`, {
-      estado: nuevoEstado,
-    })
+    // Intentar con PATCH primero
+    try {
+      const res = await axios.patch(`${VITE_API_URL}/productos/${id}/estado`, {
+        estado: nuevoEstado,
+      })
+      console.log("Respuesta del servidor (PATCH):", res.data)
+      return res.data
+    } catch (patchError) {
+      // Si falla el PATCH, intentar con PUT como fallback
+      console.log("PATCH falló, intentando con PUT como fallback:", patchError.message)
 
-    console.log("Estado del producto actualizado:", res.data.data)
-    return res.data.data
+      const res = await axios.put(`${VITE_API_URL}/productos/${id}`, {
+        estado: nuevoEstado,
+      })
+
+      console.log("Respuesta del servidor (fallback):", res.data)
+      return res.data
+    }
   } catch (error) {
-    console.error("Error al cambiar estado del producto", error)
+    console.error("Error al cambiar estado del producto:", error)
     if (error.response?.data?.mensaje) {
       error.message = error.response.data.mensaje
     }

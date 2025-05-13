@@ -1,5 +1,5 @@
 "use client"
-
+import { toast } from "react-toastify"
 import { useState, useEffect } from "react"
 import { Edit, Trash2, Search, RefreshCw, Eye, ChevronLeft, ChevronRight, ToggleLeft, ToggleRight } from "lucide-react"
 import { deleteProducto, toggleProductoEstado } from "../api/ProductoService"
@@ -62,9 +62,10 @@ const ProductoList = ({ productos = [], onEdit, onRefresh }) => {
       setActionError("")
       console.log("Eliminando producto:", productoToDelete)
       await deleteProducto(productoToDelete.id)
+      toast.success(`Producto ${productoToDelete.nombre} eliminado exitosamente`)
       if (typeof onRefresh === "function") {
-        onRefresh()
-      }
+      onRefresh()
+}
       setIsDeleting(false)
       setProductoToDelete(null)
     } catch (error) {
@@ -77,9 +78,11 @@ const ProductoList = ({ productos = [], onEdit, onRefresh }) => {
     try {
       setIsUpdating(true)
       setActionError("")
-      console.log("Cambiando estado del producto:", producto)
       await toggleProductoEstado(producto.id, producto.estado)
-      if (typeof onRefresh === "function") {
+      toast.success(
+       `producto ${producto.nombre} ${producto.estado === "activo"? "desactivado":"activado"} correctamente` 
+      )
+       if (typeof onRefresh === "function") {
         onRefresh()
       }
     } catch (error) {

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, Save, Tag, ImageIcon, AlignLeft } from "lucide-react"
+import { X, Save, Tag, ImageIcon, AlignLeft,CheckCircle, AlertCircle} from "lucide-react"
 import { createCategoria, updateCategoria } from "../api/categoriaService"
 
 const CategoriaForm = ({ categoria, onClose, onSave }) => {
@@ -32,7 +32,7 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
         imagenUrl: categoria.imagenUrl || "",
         estado: categoria.estado || "activo",
       })
-      if (categoria.imagenUrl) setImagePreview(categoria.imagenUrl)
+      if (categoria.imagenUrl) imagePreview(categoria.imagenUrl)
     }
   }, [categoria])
 
@@ -48,7 +48,7 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
       setImageFile(file)
       const reader = new FileReader()
       reader.onloadend = () => {
-        setImagePreview(reader.result)
+        imagePreview(reader.result)
         setFormData((prev) => ({ ...prev, imagenUrl: reader.result }))
       }
       reader.readAsDataURL(file)
@@ -155,7 +155,13 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
         options: [
           { value: "activo", label: "Activo" },
           { value: "inactivo", label: "Inactivo" },
-        ],
+        ], 
+        icon:
+        formData.estado === "activo" ? (
+          <CheckCircle size={18} className="text-green-400" />
+        ) : (
+          <AlertCircle size={18} className="text-red-400" />
+        ),
       },
       {
         type: "image",
@@ -222,7 +228,7 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
           <div className="flex items-center space-x-4">
             <div className="relative w-24 h-24 bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
               {field.preview ? (
-                <img src={field.preview || "/placeholder.svg"} alt="Preview" className="w-full h-full object-cover" />
+                <img src={formData.imagenUrl || "/placeholder.svg"} alt="Preview" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-500">
                   <ImageIcon size={32} />
@@ -342,17 +348,17 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
                   type="button"
                   onClick={nextStep}
                   className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600"
-                  disabled={isSubmitting}
+                  
                 >
                   Siguiente
                 </button>
               ) : (
                 <button
                   type="submit"
+                  disabled={isSubmitting}
                   className={`px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2 border border-orange-500 ${
                     isSubmitting ? "opacity-70 cursor-not-allowed" : ""
                   }`}
-                  disabled={isSubmitting}
                 >
                   {isSubmitting ? (
                     <>
