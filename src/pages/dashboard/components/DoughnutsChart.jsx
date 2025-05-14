@@ -7,7 +7,7 @@ import {
   Legend
 } from 'chart.js';
 import { obtenerResumenDashboard } from '../../dashboard/api/dashboardservice.js';
-
+    
 // Registrar componentes de ChartJS
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -106,6 +106,9 @@ const DoughnutChart = () => {
       </div>
     </div>
   );
+
+  //hola carechima
 };
 
 export default DoughnutChart;
+   
