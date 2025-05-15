@@ -2,12 +2,20 @@
 
 import { useEffect, useState } from "react"
 import { useAuth } from "../context/AuthContext"
-import { obtenerPermisosUsuario } from "../api/usuarioService"
-import { Package, TagsIcon as Categories, FileText, Users, Settings, AlertTriangle, DollarSign } from "lucide-react"
+import {
+  Package,
+  TagsIcon as Categories,
+  FileText,
+  Users,
+  Settings,
+  AlertTriangle,
+  DollarSign,
+  ShoppingBag,
+  LayoutDashboard,
+} from "lucide-react"
 
 const ModuleAccess = () => {
-  const { user, isAuthenticated, isLoadingAuth } = useAuth()
-  const [permisos, setPermisos] = useState([])
+  const { user, isAuthenticated, isLoadingAuth, hasPermission, permisos, loadUserPermissions } = useAuth()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -17,8 +25,7 @@ const ModuleAccess = () => {
 
       try {
         setLoading(true)
-        const data = await obtenerPermisosUsuario()
-        setPermisos(data.permisos || [])
+        await loadUserPermissions()
       } catch (err) {
         console.error("Error al cargar permisos:", err)
         setError("No se pudieron cargar los permisos del usuario")
@@ -35,16 +42,29 @@ const ModuleAccess = () => {
     if (!isAuthenticated) return false
 
     // Administradores tienen acceso a todo
-    if (user?.id_rol === 1) return true
+    if (user?.id_rol === 1) {
+      return true
+    }
 
     // Verificar si el usuario tiene algún permiso para este módulo
-    return permisos.some(
-      (permiso) => permiso.recurso === modulo && (permiso.accion === "crear" || permiso.accion === "editar"),
-    )
+    const tieneCrear = hasPermission(modulo, "crear")
+    const tieneEditar = hasPermission(modulo, "editar")
+
+    console.log(`Módulo ${modulo}: Crear=${tieneCrear}, Editar=${tieneEditar}`)
+
+    return tieneCrear || tieneEditar
   }
 
   // Definición de módulos con sus iconos y rutas
   const modulos = [
+    {
+      id: "dashboard",
+      nombre: "Dashboard",
+      icono: LayoutDashboard,
+      ruta: "/dashboard",
+      descripcion: "Panel principal del sistema",
+      siempreVisible: true,
+    },
     {
       id: "productos",
       nombre: "Productos",
@@ -56,10 +76,16 @@ const ModuleAccess = () => {
       id: "categorias",
       nombre: "Categorías",
       icono: Categories,
-      ruta: "/categorias",
+      ruta: "/categoria",
       descripcion: "Administrar categorías de productos",
     },
-    { id: "ventas", nombre: "Ventas", icono: DollarSign, ruta: "/ventas", descripcion: "Gestionar ventas realizadas" },
+    {
+      id: "ventas",
+      nombre: "Ventas",
+      icono: DollarSign,
+      ruta: "/ventas",
+      descripcion: "Gestionar ventas realizadas",
+    },
     {
       id: "pedidos",
       nombre: "Pedidos",
@@ -68,11 +94,19 @@ const ModuleAccess = () => {
       descripcion: "Administrar pedidos de clientes",
     },
     {
+      id: "clientes",
+      nombre: "Clientes",
+      icono: ShoppingBag,
+      ruta: "/clientes",
+      descripcion: "Gestionar clientes",
+    },
+    {
       id: "usuarios",
       nombre: "Usuarios",
       icono: Users,
-      ruta: "/usuarios",
+      ruta: "/usuario",
       descripcion: "Gestionar usuarios del sistema",
+      requiereRolAdmin: true,
     },
     {
       id: "configuracion",
@@ -80,11 +114,21 @@ const ModuleAccess = () => {
       icono: Settings,
       ruta: "/configuracion",
       descripcion: "Configurar roles y permisos",
+      requiereRolAdmin: true,
     },
   ]
 
   // Filtrar módulos según permisos
-  const modulosPermitidos = modulos.filter((modulo) => tienePermiso(modulo.id))
+  const modulosPermitidos = modulos.filter((modulo) => {
+    // Si el módulo siempre es visible, mostrarlo
+    if (modulo.siempreVisible) return true
+
+    // Si requiere rol admin, verificar si el usuario es admin
+    if (modulo.requiereRolAdmin) return user?.id_rol === 1
+
+    // En otro caso, verificar si tiene alguno de los permisos (crear o editar)
+    return tienePermiso(modulo.id)
+  })
 
   if (loading) {
     return (
