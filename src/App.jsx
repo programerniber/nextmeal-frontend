@@ -1,10 +1,7 @@
-import {
-  Outlet,
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate
-} from "react-router-dom"
+"use client"
+
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
+import { useState, useEffect } from "react"
 
 import Sidebar from "./components/layout/sidebar"
 import Navbar from "./components/layout/navbar"
@@ -15,7 +12,7 @@ import Productos from "./pages/productos/productos"
 import Usuario from "./pages/usuarios/usuario"
 import Venta from "./pages/ventas/venta"
 import Configuracion from "./pages/configuracion/configuracion"
-import Dashboard from "./pages/dashboard/dashboard" 
+import Dashboard from "./pages/dashboard/dashboard"
 import { SidebarProvider } from "./components/layout/sidebarContext"
 import LoginPage from "./pages/usuarios/Login"
 import { useSidebar } from "./components/layout/sidebarUtils"
@@ -25,12 +22,22 @@ import "react-toastify/dist/ReactToastify.css"
 import "./App.css"
 import { AuthProvider, useAuth } from "./pages/usuarios/context/AuthContext"
 import "./App.css"
+import ProtectedRoute from "./pages/usuarios/components/ProtectedRoute"
 
 // Componente para proteger rutas
-const ProtectedRoute = ({ children, requiredRole = null }) => {
-  const { isAuthenticated, isLoadingAuth, hasRole } = useAuth()
+const ProtectedRouteWrapper = ({ children, requiredPermission, requiredRole }) => {
+  const { isAuthenticated, isLoadingAuth } = useAuth()
+  const [initialized, setInitialized] = useState(false)
 
-  if (isLoadingAuth) {
+  useEffect(() => {
+    // Solo actualizar el estado cuando la carga de autenticación ha terminado
+    if (!isLoadingAuth) {
+      setInitialized(true)
+    }
+  }, [isLoadingAuth])
+
+  // No renderizar nada hasta que la autenticación haya terminado de cargar
+  if (!initialized) {
     return <div className="flex justify-center items-center h-screen">Cargando...</div>
   }
 
@@ -38,12 +45,11 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
     return <Navigate to="/login" replace />
   }
 
-  // Verificar rol si es necesario
-  if (requiredRole && !hasRole(requiredRole)) {
-    return <div className="p-6 bg-red-900 text-white rounded-lg">No tienes permisos para acceder a esta página</div>
-  }
-
-  return children
+  return (
+    <ProtectedRoute requiredPermission={requiredPermission} requiredRole={requiredRole}>
+      {children}
+    </ProtectedRoute>
+  )
 }
 
 export function App() {
@@ -61,9 +67,17 @@ export function App() {
 function AppContent() {
   const { isExpanded } = useSidebar()
   const { isAuthenticated, isLoadingAuth } = useAuth()
+  const [initialized, setInitialized] = useState(false)
 
-  // Mostrar pantalla de carga mientras se verifica la autenticación
-  if (isLoadingAuth) {
+  useEffect(() => {
+    // Solo actualizar el estado cuando la carga de autenticación ha terminado
+    if (!isLoadingAuth) {
+      setInitialized(true)
+    }
+  }, [isLoadingAuth])
+
+  // No renderizar nada hasta que la autenticación haya terminado de cargar
+  if (!initialized) {
     return <div className="flex justify-center items-center h-screen">Cargando...</div>
   }
 
@@ -89,69 +103,65 @@ function AppContent() {
             <Route
               path="/dashboard"
               element={
-                <ProtectedRoute>
+                <ProtectedRouteWrapper>
                   <Dashboard />
-                </ProtectedRoute>
+                </ProtectedRouteWrapper>
               }
             />
             <Route
               path="/clientes"
               element={
-                <ProtectedRoute>
+                <ProtectedRouteWrapper requiredPermission="clientes.ver">
                   <Cliente />
-                </ProtectedRoute>
+                </ProtectedRouteWrapper>
               }
             />
             <Route
               path="/pedidos"
               element={
-                <ProtectedRoute>
+                <ProtectedRouteWrapper requiredPermission="pedidos.ver">
                   <Pedido />
-                </ProtectedRoute>
+                </ProtectedRouteWrapper>
               }
             />
             <Route
               path="/usuario"
               element={
-                <ProtectedRoute requiredRole={1}>
-                  {" "}
-                  {/* Asumiendo que 1 es el ID del rol admin */}
+                <ProtectedRouteWrapper requiredRole={1}>
                   <Usuario />
-                </ProtectedRoute>
+                </ProtectedRouteWrapper>
               }
             />
             <Route
               path="/categoria"
               element={
-                <ProtectedRoute>
+                <ProtectedRouteWrapper requiredPermission="categorias.ver">
                   <Categoria />
-                </ProtectedRoute>
+                </ProtectedRouteWrapper>
               }
             />
             <Route
               path="/productos"
               element={
-                <ProtectedRoute>
+                <ProtectedRouteWrapper requiredPermission="productos.ver">
                   <Productos />
-                </ProtectedRoute>
+                </ProtectedRouteWrapper>
               }
             />
             <Route
               path="/ventas"
               element={
-                <ProtectedRoute>
+                <ProtectedRouteWrapper requiredPermission="ventas.ver">
                   <Venta />
-                </ProtectedRoute>
+                </ProtectedRouteWrapper>
               }
             />
             <Route
               path="/configuracion"
               element={
-                <ProtectedRoute requiredRole={1}>
-                  {" "}
-                  {/* Asumiendo que 1 es el ID del rol admin */}
+                <ProtectedRouteWrapper requiredRole={1}>
                   <Configuracion />
-                </ProtectedRoute>
+                </ProtectedRouteWrapper>
               }
             />
 
@@ -168,15 +178,11 @@ function AppContent() {
           newestOnTop
           closeOnClick
           pauseOnHover
-          theme="dark" // Puedes cambiarlo a "light" o "colored"
+          theme="dark"
         />
       </main>
     </div>
   )
-}
-
-function Layout() {
-  return <Outlet />
 }
 
 function NotFound() {
@@ -189,9 +195,5 @@ function NotFound() {
     </div>
   )
 }
-
-
-
-
 
 export default App
