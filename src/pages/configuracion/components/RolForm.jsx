@@ -1,8 +1,11 @@
+"use client"
+
 // Primero, modifica el useEffect inicial para cargar y mapear todos los permisos disponibles
 import { useState, useEffect } from "react"
 import { crearRol, actualizarRol } from "../api/rol"
 import { obtenerPermisosPorRol, obtenerPermisos } from "../api/permiso"
 import { Shield, Save, X, AlertTriangle } from "lucide-react"
+import AlertMessage from "./AlertMessage"
 
 const RolForm = ({ onRolCreado, rolEditar, onCancel }) => {
   const [nombre, setNombre] = useState("")
@@ -56,7 +59,6 @@ const RolForm = ({ onRolCreado, rolEditar, onCancel }) => {
     cargarFormulario()
   }, [rolEditar])
 
-
   const handleCheckboxChange = (modulo, accion) => {
     setPermisos({
       ...permisos,
@@ -108,9 +110,7 @@ const RolForm = ({ onRolCreado, rolEditar, onCancel }) => {
         for (const accion in permisos[modulo]) {
           if (permisos[modulo][accion]) {
             // Buscar el ID del permiso en la lista completa de permisos
-            const permisoEncontrado = todosLosPermisos.find(
-              p => p.recurso === modulo && p.accion === accion
-            )
+            const permisoEncontrado = todosLosPermisos.find((p) => p.recurso === modulo && p.accion === accion)
 
             if (permisoEncontrado) {
               permisosSeleccionados.push(permisoEncontrado.id)
@@ -128,13 +128,13 @@ const RolForm = ({ onRolCreado, rolEditar, onCancel }) => {
         // Crear rol con los IDs de permisos seleccionados
         rolResultado = await crearRol({
           nombre,
-          permisos: permisosSeleccionados
+          permisos: permisosSeleccionados,
         })
       } else if (modo === "editar") {
         // Actualizar rol con los IDs de permisos seleccionados
         rolResultado = await actualizarRol(rolEditar.id, {
           nombre,
-          permisos: permisosSeleccionados
+          permisos: permisosSeleccionados,
         })
       }
 
@@ -156,18 +156,7 @@ const RolForm = ({ onRolCreado, rolEditar, onCancel }) => {
 
   return (
     <div className="space-y-6">
-      {error && (
-        <div className="bg-red-900/50 text-white p-4 rounded-lg border border-red-700 flex flex-col items-start">
-          <div className="flex items-start mb-2">
-            <AlertTriangle className="text-red-400 mr-2 h-5 w-5 mt-0.5 flex-shrink-0" />
-            <p>{error}</p>
-          </div>
-          <p className="text-gray-300 text-sm mt-2">
-            Verifica que el servidor API esté ejecutándose en http://localhost:3000 y que las rutas /api/roles y
-            /api/permisos estén disponibles.
-          </p>
-        </div>
-      )}
+      {error && <AlertMessage type="error" message={error} />}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
@@ -238,8 +227,9 @@ const RolForm = ({ onRolCreado, rolEditar, onCancel }) => {
                   return (
                     <tr
                       key={modulo}
-                      className={`border-t border-gray-700 hover:bg-gray-700/30 transition-colors ${index % 2 === 0 ? "bg-gray-800/50" : "bg-gray-800"
-                        }`}
+                      className={`border-t border-gray-700 hover:bg-gray-700/30 transition-colors ${
+                        index % 2 === 0 ? "bg-gray-800/50" : "bg-gray-800"
+                      }`}
                     >
                       <td className="p-3 capitalize font-medium">{modulo}</td>
                       <td className="p-3 text-center">
@@ -251,8 +241,9 @@ const RolForm = ({ onRolCreado, rolEditar, onCancel }) => {
                             className="sr-only"
                           />
                           <div
-                            className={`w-5 h-5 rounded ${acciones.crear ? "bg-green-500 ring-2 ring-green-300/30" : "bg-gray-700 hover:bg-gray-600"
-                              } flex items-center justify-center transition-all duration-200`}
+                            className={`w-5 h-5 rounded ${
+                              acciones.crear ? "bg-green-500 ring-2 ring-green-300/30" : "bg-gray-700 hover:bg-gray-600"
+                            } flex items-center justify-center transition-all duration-200`}
                           >
                             {acciones.crear && <span className="text-white text-xs">✓</span>}
                           </div>
@@ -267,10 +258,11 @@ const RolForm = ({ onRolCreado, rolEditar, onCancel }) => {
                             className="sr-only"
                           />
                           <div
-                            className={`w-5 h-5 rounded ${acciones.editar
-                              ? "bg-yellow-500 ring-2 ring-yellow-300/30"
-                              : "bg-gray-700 hover:bg-gray-600"
-                              } flex items-center justify-center transition-all duration-200`}
+                            className={`w-5 h-5 rounded ${
+                              acciones.editar
+                                ? "bg-yellow-500 ring-2 ring-yellow-300/30"
+                                : "bg-gray-700 hover:bg-gray-600"
+                            } flex items-center justify-center transition-all duration-200`}
                           >
                             {acciones.editar && <span className="text-white text-xs">✓</span>}
                           </div>
@@ -282,10 +274,11 @@ const RolForm = ({ onRolCreado, rolEditar, onCancel }) => {
                             type="button"
                             onClick={() => selectAllForModule(modulo)}
                             disabled={allSelected}
-                            className={`text-xs px-2 py-1 rounded ${allSelected
-                              ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                              : "bg-green-500/20 text-green-400 hover:bg-green-500/30"
-                              }`}
+                            className={`text-xs px-2 py-1 rounded ${
+                              allSelected
+                                ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                                : "bg-green-500/20 text-green-400 hover:bg-green-500/30"
+                            }`}
                           >
                             Todo
                           </button>
@@ -293,10 +286,11 @@ const RolForm = ({ onRolCreado, rolEditar, onCancel }) => {
                             type="button"
                             onClick={() => deselectAllForModule(modulo)}
                             disabled={noneSelected}
-                            className={`text-xs px-2 py-1 rounded ${noneSelected
-                              ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                              : "bg-red-500/20 text-red-400 hover:bg-red-500/30"
-                              }`}
+                            className={`text-xs px-2 py-1 rounded ${
+                              noneSelected
+                                ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                                : "bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                            }`}
                           >
                             Nada
                           </button>

@@ -20,6 +20,7 @@ const ProductoList = ({ productos = [], onEdit, onRefresh }) => {
   const itemsPerPage = 5
 
   useEffect(() => {
+    console.log(productos)
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm)
       setCurrentPage(1)
