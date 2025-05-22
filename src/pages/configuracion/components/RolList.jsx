@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from "react"
 import { obtenerRoles, eliminarRol } from "../api/rol"
 import { obtenerPermisosPorRol } from "../api/permiso"
-import { Edit, Trash, Eye, EyeOff, AlertTriangle, Check, X, Shield } from "lucide-react"
+import { Edit, Trash, Eye, EyeOff, Check, X, Shield } from "lucide-react"
+import AlertMessage from "../components/AlertMessage"
 
 const RolList = ({ onEditRol, refreshTrigger }) => {
   const [roles, setRoles] = useState([])
@@ -51,16 +52,14 @@ const RolList = ({ onEditRol, refreshTrigger }) => {
   }, [refreshTrigger])
 
   const tienePermiso = (rolId, modulo, accion) => {
-    if (!permisosPorRol[rolId]) return false;
-    
+    if (!permisosPorRol[rolId]) return false
+
     // Si permisosPorRol[rolId] es un objeto con propiedad 'permisos'
-    const permisosArray = Array.isArray(permisosPorRol[rolId]) 
-      ? permisosPorRol[rolId] 
-      : (permisosPorRol[rolId].permisos || []);
-    
-    return permisosArray.some(
-      (permiso) => permiso.recurso === modulo && permiso.accion === accion && permiso.activo,
-    );
+    const permisosArray = Array.isArray(permisosPorRol[rolId])
+      ? permisosPorRol[rolId]
+      : permisosPorRol[rolId].permisos || []
+
+    return permisosArray.some((permiso) => permiso.recurso === modulo && permiso.accion === accion && permiso.activo)
   }
 
   const handleVerPermisos = (rol) => {
@@ -89,12 +88,9 @@ const RolList = ({ onEditRol, refreshTrigger }) => {
 
   if (error) {
     return (
-      <div className="bg-red-900/30 p-4 rounded-lg border border-red-700 flex flex-col items-start">
-        <div className="flex items-start mb-2">
-          <AlertTriangle className="text-red-400 mr-2 h-5 w-5 mt-0.5 flex-shrink-0" />
-          <p className="text-white">{error}</p>
-        </div>
-        <p className="text-gray-300 text-sm mt-2">
+      <div className="space-y-4">
+        <AlertMessage type="error" message={error} />
+        <p className="text-gray-300 text-sm">
           Verifica que el servidor API esté ejecutándose en http://localhost:3000 y que las rutas /api/roles y
           /api/permisos estén disponibles.
         </p>
@@ -133,10 +129,11 @@ const RolList = ({ onEditRol, refreshTrigger }) => {
                     <div className="flex justify-center space-x-3">
                       <button
                         onClick={() => handleVerPermisos(rol)}
-                        className={`p-1.5 rounded-full transition-all duration-200 ${rolSeleccionado === rol.id
-                          ? "bg-blue-500/20 text-blue-400"
-                          : "text-blue-400/70 hover:text-blue-400 hover:bg-blue-500/10"
-                          }`}
+                        className={`p-1.5 rounded-full transition-all duration-200 ${
+                          rolSeleccionado === rol.id
+                            ? "bg-blue-500/20 text-blue-400"
+                            : "text-blue-400/70 hover:text-blue-400 hover:bg-blue-500/10"
+                        }`}
                         title={rolSeleccionado === rol.id ? "Ocultar permisos" : "Ver permisos"}
                       >
                         {rolSeleccionado === rol.id ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -250,4 +247,3 @@ const RolList = ({ onEditRol, refreshTrigger }) => {
 }
 
 export default RolList
-

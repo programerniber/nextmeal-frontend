@@ -75,7 +75,6 @@ export const eliminarRol = async (id) => {
     return response.data
   } catch (error) {
     console.error(`Error al eliminar rol con ID ${id}:`, error)
-    throw new Error(error.response?.data?.message || `Error al eliminar rol con ID ${id}`)
+    throw new Error(error.response?.data?.mensaje || `Error al eliminar rol con ID ${id}`)
   }
 }
-
