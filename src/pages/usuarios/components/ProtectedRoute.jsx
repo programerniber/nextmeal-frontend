@@ -2,13 +2,11 @@
 
 import { useEffect, useState } from "react"
 import { useAuth } from "../context/AuthContext"
-import { obtenerPermisosUsuario } from "../api/usuarioService"
 import { AlertTriangle, ShieldOff } from "lucide-react"
 
 const ProtectedRoute = ({ children, requiredPermission, requiredRole }) => {
-  const { user, isAuthenticated, isLoadingAuth, hasRole, navigateTo } = useAuth()
+  const { user, isAuthenticated, isLoadingAuth, hasRole, hasPermission, navigateTo } = useAuth()
   const [authorized, setAuthorized] = useState(false)
-  const [permisos, setPermisos] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -26,19 +24,14 @@ const ProtectedRoute = ({ children, requiredPermission, requiredRole }) => {
       }
 
       try {
-        // Cargar permisos del usuario
-        if (requiredPermission) {
-          setLoading(true)
-          const data = await obtenerPermisosUsuario()
-          setPermisos(data.permisos || [])
-          setLoading(false)
-        }
+        setLoading(true)
 
         // Verificar permisos y roles
         let hasAccess = true
 
         // Verificar rol si es requerido
         if (requiredRole && !hasRole(requiredRole)) {
+          console.log(`Acceso denegado: Se requiere rol ${requiredRole}`)
           hasAccess = false
         }
 
@@ -47,24 +40,33 @@ const ProtectedRoute = ({ children, requiredPermission, requiredRole }) => {
           const [recurso, accion] = requiredPermission.split(".")
 
           // Verificar si el usuario tiene el permiso requerido
-          const tienePermiso =
-            user.id_rol === 1 || // Administrador tiene todos los permisos
-            permisos.some((p) => p.recurso === recurso && p.accion === accion)
+          // Si el usuario es admin (id_rol === 1) o tiene el permiso específico
+          // O si solo se requiere permiso de "ver" (todos tienen permiso de ver)
+          const tienePermiso = user.id_rol === 1 || hasPermission(recurso, accion) || accion === "ver" // Todos tienen permiso de ver
+
+          console.log(
+            `Verificando permiso ${requiredPermission}: ${tienePermiso ? "Tiene permiso" : "No tiene permiso"}`,
+          )
 
           if (!tienePermiso) {
+            console.log(`Acceso denegado: Se requiere permiso ${requiredPermission}`)
             hasAccess = false
           }
         }
 
-        if (!hasAccess) {
-          navigateTo("/unauthorized")
+        // Actualizar el estado de autorización
+        setAuthorized(hasAccess)
+
+        // Solo redirigir si explícitamente no tiene acceso y no está en el dashboard
+        if (!hasAccess && window.location.pathname !== "/dashboard") {
+          console.log("Redirigiendo al dashboard por falta de permisos")
+          navigateTo("/dashboard")
           return
         }
-
-        setAuthorized(true)
       } catch (err) {
         console.error("Error al verificar permisos:", err)
         setError("Error al verificar permisos de acceso")
+      } finally {
         setLoading(false)
       }
     }

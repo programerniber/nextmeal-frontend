@@ -275,7 +275,7 @@ const UserForm = ({ usuario, onClose, onSave }) => {
           { value: "inactivo", label: "Inactivo" },
         ],
         icon:
-          formData.estado === "activo" ? (
+        formData.estado === "activo" ? (
             <CheckCircle size={18} className="text-green-400" />
           ) : (
             <AlertCircle size={18} className="text-red-400" />

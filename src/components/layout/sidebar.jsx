@@ -1,105 +1,204 @@
 "use client"
+
+import { useState, useEffect, useRef } from "react"
+import { Link, useLocation } from "react-router-dom"
+import { useAuth } from "../../pages/usuarios/context/AuthContext"
+import { useSidebar } from "./sidebarUtils"
 import {
   LayoutDashboard,
   Users,
-  ShoppingCart,
-  Settings,
-  User,
+  ShoppingBag,
   Tag,
-  ChevronsLeft,
-  ChevronsRight,
-  Box,
-  ShoppingBag
+  Package,
+  DollarSign,
+  FileText,
+  Settings,
+  Menu,
+  LogOut,
 } from "lucide-react"
-import { Link, useLocation } from "react-router-dom"
-import { useSidebar } from "./sidebarUtils" 
 
 const Sidebar = () => {
-  const { isExpanded, toggleExpand } = useSidebar()
+  const { isExpanded, toggleSidebar } = useSidebar()
+  const { user, signout, isAuthenticated, loadUserPermissions, isLoadingAuth } = useAuth()
+  const [loading, setLoading] = useState(true)
   const location = useLocation()
 
-  const menuItems = [
-    { icon: <LayoutDashboard size={20} />, text: "Dashboard", to: "/dashboard" },
-    { icon: <User size={20} />, text: "Usuario", to: "/usuario" },
-    { icon: <Users size={20} />, text: "Clientes", to: "/clientes" },
-    { icon: <Tag size={20} />, text: "Categoría", to: "/categoria" },
-    { icon: <Box size={20} />, text: "Productos", to: "/productos" },
-    { icon: <ShoppingCart size={20} />, text: "Ventas", to: "/ventas" },
-    { icon: <ShoppingBag  size={20} />, text: "Pedidos", to: "/pedidos" },
-    { icon: <Settings size={20} />, text: "Configuración", to: "/configuracion" },
+  // Usar una referencia para evitar múltiples cargas de permisos
+  const permisosLoaded = useRef(false)
+
+  // Definición de módulos con sus iconos y rutas
+  const modulos = [
+    {
+      id: "dashboard",
+      nombre: "Dashboard",
+      icono: LayoutDashboard,
+      ruta: "/dashboard",
+    },
+    {
+      id: "clientes",
+      nombre: "Clientes",
+      icono: ShoppingBag,
+      ruta: "/clientes",
+    },
+    {
+      id: "pedidos",
+      nombre: "Pedidos",
+      icono: FileText,
+      ruta: "/pedidos",
+    },
+    {
+      id: "usuarios",
+      nombre: "Usuarios",
+      icono: Users,
+      ruta: "/usuario",
+      soloAdmin: true, // Solo visible para administradores
+    },
+    {
+      id: "categorias",
+      nombre: "Categorías",
+      icono: Tag,
+      ruta: "/categoria",
+    },
+    {
+      id: "productos",
+      nombre: "Productos",
+      icono: Package,
+      ruta: "/productos",
+    },
+    {
+      id: "ventas",
+      nombre: "Ventas",
+      icono: DollarSign,
+      ruta: "/ventas",
+    },
+    {
+      id: "configuracion",
+      nombre: "Configuración",
+      icono: Settings,
+      ruta: "/configuracion",
+      soloAdmin: true, // Solo visible para administradores
+    },
   ]
 
+  useEffect(() => {
+    const cargarPermisos = async () => {
+      // Solo cargar permisos si el usuario está autenticado y la autenticación ha terminado de cargar
+      if (!isAuthenticated || isLoadingAuth) {
+        console.log("Sidebar: Esperando autenticación para cargar permisos")
+        setLoading(false)
+        return
+      }
+
+      // Evitar cargar permisos múltiples veces
+      if (permisosLoaded.current) {
+        console.log("Sidebar: Permisos ya cargados, evitando carga duplicada")
+        setLoading(false)
+        return
+      }
+
+      try {
+        console.log("Sidebar: Iniciando carga de permisos para el usuario autenticado")
+        setLoading(true)
+        await loadUserPermissions()
+        console.log("Sidebar: Permisos cargados exitosamente")
+
+        // Marcar que los permisos ya se cargaron
+        permisosLoaded.current = true
+      } catch (error) {
+        console.error("Sidebar: Error al cargar permisos:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    // Solo intentar cargar permisos cuando la autenticación ha terminado
+    if (!isLoadingAuth) {
+      cargarPermisos()
+    }
+
+    // Limpiar el estado cuando el componente se desmonta
+    return () => {
+      permisosLoaded.current = false
+    }
+  }, [isAuthenticated, isLoadingAuth, loadUserPermissions])
+
+  // Nueva lógica de filtrado: mostrar todos los módulos excepto los marcados como soloAdmin
+  const modulosVisibles = modulos.filter((modulo) => {
+    // Si el módulo es solo para admin, verificar si el usuario es admin
+    if (modulo.soloAdmin) {
+      const esAdmin = user?.id_rol === 1
+      return esAdmin
+    }
+
+    // Todos los demás módulos son visibles para todos los usuarios
+    return true
+  })
+
   return (
-    <aside
-      className={`
-                fixed top-0 left-0 z-50 h-full 
-                bg-gray-900 text-white 
-                shadow-2xl border-r-2 border-orange-500 
-                transition-all duration-300
-                ${isExpanded ? "w-64" : "w-20"}
-                overflow-y-auto
-            `}
+    <div
+      className={`fixed top-0 left-0 h-full bg-gray-900 text-white transition-all duration-300 z-20 ${
+        isExpanded ? "w-64" : "w-20"
+      }`}
     >
-      {/* Línea decorativa superior */}
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-500 to-red-500 animate-pulse"></div>
-
-      {/* Botón de toggle */}
-      <button
-        onClick={toggleExpand}
-        className="
-                    absolute top-4 right-4 z-50 
-                    bg-orange-500 text-white 
-                    hover:bg-orange-600 
-                    p-2 rounded-full 
-                    shadow-lg 
-                    transform hover:scale-110 
-                    transition-all duration-300
-                "
-      >
-        {isExpanded ? <ChevronsLeft size={20} /> : <ChevronsRight size={20} />}
-      </button>
-
-      {/* Logo */}
-      <div className="flex items-center justify-center mt-8 mb-12 relative">
-        <img
-          src="logoriginal.png"
-          className={`
-                        w-36 h-auto 
-                        transition-all duration-300 
-                        transform hover:scale-105
-                        ${isExpanded ? "scale-100" : "scale-70"}
-                    `}
-        />
+      <div className="flex items-center justify-between h-16 px-4 border-b border-gray-800">
+        <h1 className={`font-bold text-xl ${!isExpanded && "hidden"}`}>Sistema</h1>
+        <button
+          onClick={toggleSidebar}
+          className="p-2 rounded-lg hover:bg-gray-800 transition-colors"
+          title={isExpanded ? "Contraer menú" : "Expandir menú"}
+        >
+          <Menu size={20} />
+        </button>
       </div>
 
-      {/* Menú */}
-      <nav className="px-4 pb-8">
-        <ul className="space-y-2">
-          {menuItems.map((item, index) => (
-            <li key={index} className="transition-all duration-300 hover:scale-105">
-              <Link
-                to={item.to}
-                className={`
-                                    flex items-center p-3 rounded-lg 
-                                    transition-all duration-300 
-                                    ${
-                                      location.pathname === item.to
-                                        ? "bg-orange-500 text-white"
-                                        : "hover:bg-gray-800 hover:text-orange-400"
-                                    }
-                                    ${isExpanded ? "justify-start" : "justify-center"}
-                                `}
-              >
-                {item.icon}
-                {isExpanded && <span className="ml-3 whitespace-nowrap">{item.text}</span>}
-              </Link>
-            </li>
-          ))}
+      <div className="py-4">
+        <ul className="space-y-2 px-2">
+          {loading
+            ? // Mostrar esqueletos de carga mientras se cargan los permisos
+              Array(5)
+                .fill(0)
+                .map((_, index) => (
+                  <li key={index} className="px-2 py-3">
+                    <div className="flex items-center">
+                      <div className="w-6 h-6 bg-gray-700 rounded-md animate-pulse"></div>
+                      {isExpanded && <div className="ml-3 h-4 w-24 bg-gray-700 rounded animate-pulse"></div>}
+                    </div>
+                  </li>
+                ))
+            : // Mostrar módulos visibles
+              modulosVisibles.map((modulo) => {
+                const isActive = location.pathname === modulo.ruta
+                const IconComponent = modulo.icono
+
+                return (
+                  <li key={modulo.id}>
+                    <Link
+                      to={modulo.ruta}
+                      className={`flex items-center px-2 py-3 rounded-lg transition-colors ${
+                        isActive ? "bg-orange-500 text-white" : "hover:bg-gray-800 text-gray-300 hover:text-white"
+                      }`}
+                    >
+                      <IconComponent size={20} className="min-w-[20px]" />
+                      {isExpanded && <span className="ml-3">{modulo.nombre}</span>}
+                    </Link>
+                  </li>
+                )
+              })}
         </ul>
-      </nav>
-    </aside>
+      </div>
+
+      {/* Botón de cerrar sesión en la parte inferior */}
+      <div className="absolute bottom-0 w-full border-t border-gray-800 p-4">
+        <button
+          onClick={signout}
+          className="flex items-center w-full px-2 py-2 rounded-lg hover:bg-gray-800 text-gray-300 hover:text-white transition-colors"
+        >
+          <LogOut size={20} />
+          {isExpanded && <span className="ml-3">Cerrar Sesión</span>}
+        </button>
+      </div>
+    </div>
   )
 }
 
 export default Sidebar
-
