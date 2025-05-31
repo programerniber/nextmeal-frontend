@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { X, ShoppingBag, Plus, Minus, Trash2 } from "lucide-react"
 import { createPedido, updatePedido, fetchClientesPedidos, fetchProductos } from "../api/pedidoservice.js"
+import { toast } from "react-toastify"
 
 import FormField from "../../clientes/components/form/FormField.jsx"
 import SelectField from "../../clientes/components/form/SelectField.jsx"
@@ -16,7 +17,7 @@ const PedidoForm = ({ pedido, onClose, onSave }) => {
 
   const [formData, setFormData] = useState(initialFormData)
   const [errors, setErrors] = useState({})
-  const [isSubmitting, setIsSubmitting] = useState(false) 
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState("")
   const [clientes, setClientes] = useState([])
   const [productos, setProductos] = useState([])
@@ -34,7 +35,8 @@ const PedidoForm = ({ pedido, onClose, onSave }) => {
         setProductos(productosData)
       } catch (error) {
         console.error("Error al cargar datos:", error)
-        
+        toast.error("Error al cargar los datos iniciales. Por favor, recarga la página.")
+
         // Añadir más información de diagnóstico
         if (error.response) {
           console.error("Error de respuesta:", {
@@ -57,37 +59,37 @@ const PedidoForm = ({ pedido, onClose, onSave }) => {
     loadData()
   }, [])
 
-
   useEffect(() => {
     if (pedido && productos.length > 0) {
       // Acceder directamente a PedidoProductos sin sub-objeto
-      const pedidoProductos = pedido.Productos?.map(producto => {
-        
-        return {
-          producto_id: producto.id,
-          cantidad: producto.PedidoProducto?.cantidad || 1,
-          precio_unitario: producto.PedidoProducto?.precio_unitario || producto.precio,
-          subtotal: (producto.PedidoProducto?.cantidad || 1) * (producto.PedidoProducto?.precio_unitario || producto.precio),
-          producto: producto,
-          id: producto.PedidoProducto?.id // Añadir el ID de la relación
-        };
-      }) || [];
-  
+      const pedidoProductos =
+        pedido.Productos?.map((producto) => {
+          return {
+            producto_id: producto.id,
+            cantidad: producto.PedidoProducto?.cantidad || 1,
+            precio_unitario: producto.PedidoProducto?.precio_unitario || producto.precio,
+            subtotal:
+              (producto.PedidoProducto?.cantidad || 1) * (producto.PedidoProducto?.precio_unitario || producto.precio),
+            producto: producto,
+            id: producto.PedidoProducto?.id, // Añadir el ID de la relación
+          }
+        }) || []
+
       setFormData({
         id_cliente: pedido.id_cliente?.toString(),
         direccion_envio: pedido.direccion_envio || "",
-        productos: pedidoProductos
-      });
+        productos: pedidoProductos,
+      })
     }
-  }, [pedido, productos]);
+  }, [pedido, productos])
 
   const handleChange = (e) => {
     const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    setFormData((prev) => ({ ...prev, [name]: value }))
 
     // Limpiar error del campo cuando cambia
     if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: "" }))
+      setErrors((prev) => ({ ...prev, [name]: "" }))
     }
   }
 
@@ -102,74 +104,85 @@ const PedidoForm = ({ pedido, onClose, onSave }) => {
   // Agregar producto al pedido
   const agregarProducto = () => {
     if (!currentProducto) {
-      setErrors(prev => ({ ...prev, producto: "Seleccione un producto" }))
+      setErrors((prev) => ({ ...prev, producto: "Seleccione un producto" }))
+      toast.warning("Por favor selecciona un producto")
       return
     }
 
-    const productoSeleccionado = productos.find(p => p.id.toString() === currentProducto)
+    const productoSeleccionado = productos.find((p) => p.id.toString() === currentProducto)
     if (!productoSeleccionado) return
 
     // Verificar si el producto ya está en la lista
-    const productoExistente = formData.productos.find(p => p.producto_id.toString() === currentProducto)
-    
+    const productoExistente = formData.productos.find((p) => p.producto_id.toString() === currentProducto)
+
     if (productoExistente) {
       // Actualizar cantidad si ya existe
-      const nuevosProductos = formData.productos.map(p => 
-        p.producto_id.toString() === currentProducto 
-          ? { 
-              ...p, 
+      const nuevosProductos = formData.productos.map((p) =>
+        p.producto_id.toString() === currentProducto
+          ? {
+              ...p,
               cantidad: p.cantidad + currentCantidad,
-              subtotal: (p.cantidad + currentCantidad) * p.precio_unitario
+              subtotal: (p.cantidad + currentCantidad) * p.precio_unitario,
             }
-          : p
+          : p,
       )
-      
-      setFormData(prev => ({
+
+      setFormData((prev) => ({
         ...prev,
-        productos: nuevosProductos
+        productos: nuevosProductos,
       }))
+
+      toast.info(`Cantidad de ${productoSeleccionado.nombre} actualizada`)
     } else {
       // Agregar nuevo producto
       const nuevoProducto = {
-        producto_id: parseInt(currentProducto),
+        producto_id: Number.parseInt(currentProducto),
         cantidad: currentCantidad,
         precio_unitario: productoSeleccionado.precio,
         subtotal: productoSeleccionado.precio * currentCantidad,
-        producto: productoSeleccionado // Incluir información del producto para mostrar
+        producto: productoSeleccionado, // Incluir información del producto para mostrar
       }
-      
-      setFormData(prev => ({
+
+      setFormData((prev) => ({
         ...prev,
-        productos: [...prev.productos, nuevoProducto]
+        productos: [...prev.productos, nuevoProducto],
       }))
+
+      
     }
-    
+
     // Resetear selección
     setCurrentProducto("")
     setCurrentCantidad(1)
-    
+
     // Limpiar error si existe
     if (errors.producto) {
-      setErrors(prev => ({ ...prev, producto: "" }))
+      setErrors((prev) => ({ ...prev, producto: "" }))
     }
   }
 
   // Eliminar producto del pedido
   const eliminarProducto = (index) => {
+    const productoEliminado = formData.productos[index]
     const nuevosProductos = [...formData.productos]
     nuevosProductos.splice(index, 1)
-    setFormData(prev => ({ ...prev, productos: nuevosProductos }))
+    setFormData((prev) => ({ ...prev, productos: nuevosProductos }))
+
+    toast.info(`${productoEliminado.producto?.nombre || "Producto"} eliminado del pedido`)
   }
 
   // Actualizar cantidad de un producto ya agregado
   const actualizarCantidad = (index, nuevaCantidad) => {
     if (nuevaCantidad < 1) return
-    
+
     const nuevosProductos = [...formData.productos]
+    const producto = nuevosProductos[index]
     nuevosProductos[index].cantidad = nuevaCantidad
     nuevosProductos[index].subtotal = nuevaCantidad * nuevosProductos[index].precio_unitario
-    
-    setFormData(prev => ({ ...prev, productos: nuevosProductos }))
+
+    setFormData((prev) => ({ ...prev, productos: nuevosProductos }))
+
+    toast.info(`Cantidad de ${producto.producto?.nombre} actualizada a ${nuevaCantidad}`)
   }
 
   // Calcular el total del pedido
@@ -180,8 +193,8 @@ const PedidoForm = ({ pedido, onClose, onSave }) => {
   // Validaciones de formulario
   const validations = {
     id_cliente: (value) => (!value ? "El cliente es obligatorio" : ""),
-    direccion_envio: (value) => (!value.trim() ? "La dirección de envío es obligatoria" : ""),
-    productos: (array) => (array.length === 0 ? "Debe agregar al menos un producto" : "")
+    
+    productos: (array) => (array.length === 0 ? "Debe agregar al menos un producto" : ""),
   }
 
   const validateForm = () => {
@@ -196,7 +209,7 @@ const PedidoForm = ({ pedido, onClose, onSave }) => {
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
-  
+
   const handleSubmit = async (e) => {
     e.preventDefault()
 
@@ -204,41 +217,45 @@ const PedidoForm = ({ pedido, onClose, onSave }) => {
 
     setIsSubmitting(true)
     setSubmitError("")
-    
+
     try {
       // Preparar datos para enviar
-    const pedidoData = {
-  id_cliente: parseInt(formData.id_cliente),
-  direccion_envio: formData.direccion_envio,
-  total: calcularTotal(),
-  productos: formData.productos.map(item => {
-    const productoData = {
-      id_producto: item.producto_id,
-      cantidad: item.cantidad,
-      precio_unitario: item.precio_unitario
-    }
-    
-    // Si estamos editando un pedido y el producto tiene un id de relación, incluirlo
-    if (pedido && item.id) {
-      productoData.id = item.id
-    }
-    return productoData
-  })
-}
-console.log("pedidoData: ",pedidoData)
-      
-      let respuesta;
+      const pedidoData = {
+        id_cliente: Number.parseInt(formData.id_cliente),
+        direccion_envio: formData.direccion_envio,
+        total: calcularTotal(),
+        productos: formData.productos.map((item) => {
+          const productoData = {
+            id_producto: item.producto_id,
+            cantidad: item.cantidad,
+            precio_unitario: item.precio_unitario,
+          }
+
+          // Si estamos editando un pedido y el producto tiene un id de relación, incluirlo
+          if (pedido && item.id) {
+            productoData.id = item.id
+          }
+          return productoData
+        }),
+      }
+      console.log("pedidoData: ", pedidoData)
+
+      let respuesta
       if (pedido) {
-        respuesta = await updatePedido(pedido.id, pedidoData);
+        respuesta = await updatePedido(pedido.id, pedidoData)
+        toast.success("Pedido actualizado exitosamente")
       } else {
-        respuesta = await createPedido(pedidoData);
+        respuesta = await createPedido(pedidoData)
+        toast.success("Pedido creado exitosamente")
       }
 
       // Pasar la respuesta al componente padre para que actualice la lista correctamente
-      onSave(respuesta);
+      onSave(respuesta)
     } catch (error) {
       console.error("Error al guardar pedido:", error)
-      setSubmitError(error.message || "Error al guardar el pedido")
+      const errorMessage = error.message || "Error al guardar el pedido"
+      setSubmitError(errorMessage)
+      toast.error(`Error: ${errorMessage}`)
     } finally {
       setIsSubmitting(false)
     }
@@ -317,7 +334,7 @@ console.log("pedidoData: ",pedidoData)
           {/* Sección para agregar productos */}
           <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 mb-6">
             <h3 className="text-white font-medium mb-4 border-b border-gray-700 pb-2">Agregar Productos</h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div className="md:col-span-2">
                 <SelectField
@@ -327,7 +344,7 @@ console.log("pedidoData: ",pedidoData)
                   options={[
                     { value: "", label: "Seleccionar producto" },
                     ...productos
-                      .filter(p => !formData.productos.some(fp => fp.producto_id === p.id && fp.cantidad >= 10))
+                      .filter((p) => !formData.productos.some((fp) => fp.producto_id === p.id && fp.cantidad >= 10))
                       .map((producto) => ({
                         value: producto.id.toString(),
                         label: `${producto.nombre} - $${producto.precio.toLocaleString("es-CO")}`,
@@ -338,7 +355,7 @@ console.log("pedidoData: ",pedidoData)
                   className={errors.producto ? "border-red-500" : ""}
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">Cantidad</label>
                 <div className="flex items-center">
@@ -352,7 +369,7 @@ console.log("pedidoData: ",pedidoData)
                   <input
                     type="number"
                     value={currentCantidad}
-                    onChange={(e) => handleCantidadChange(parseInt(e.target.value) || 1)}
+                    onChange={(e) => handleCantidadChange(Number.parseInt(e.target.value) || 1)}
                     className="w-full text-center bg-gray-700 text-white border-0 py-2"
                     min="1"
                   />
@@ -366,7 +383,7 @@ console.log("pedidoData: ",pedidoData)
                 </div>
               </div>
             </div>
-            
+
             <div className="flex justify-end">
               <button
                 type="button"
@@ -382,13 +399,13 @@ console.log("pedidoData: ",pedidoData)
           {/* Lista de productos agregados */}
           <div className="mb-6">
             <h3 className="text-white font-medium mb-3">Productos en este pedido</h3>
-            
+
             {errors.productos && (
               <div className="bg-red-900 bg-opacity-30 text-red-300 p-2 rounded mb-3 text-sm border border-red-800">
                 {errors.productos}
               </div>
             )}
-            
+
             {formData.productos.length === 0 ? (
               <div className="text-center py-6 text-gray-400 bg-gray-800 rounded-lg border border-gray-700">
                 No hay productos agregados al pedido
@@ -398,11 +415,21 @@ console.log("pedidoData: ",pedidoData)
                 <table className="min-w-full">
                   <thead className="bg-gray-900">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-orange-500 uppercase tracking-wider">Producto</th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-orange-500 uppercase tracking-wider">Cantidad</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-orange-500 uppercase tracking-wider">Precio Unit.</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-orange-500 uppercase tracking-wider">Subtotal</th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-orange-500 uppercase tracking-wider">Acciones</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-orange-500 uppercase tracking-wider">
+                        Producto
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-orange-500 uppercase tracking-wider">
+                        Cantidad
+                      </th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-orange-500 uppercase tracking-wider">
+                        Precio Unit.
+                      </th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-orange-500 uppercase tracking-wider">
+                        Subtotal
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-orange-500 uppercase tracking-wider">
+                        Acciones
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-700">
@@ -423,7 +450,7 @@ console.log("pedidoData: ",pedidoData)
                             <input
                               type="number"
                               value={item.cantidad}
-                              onChange={(e) => actualizarCantidad(index, parseInt(e.target.value) || 1)}
+                              onChange={(e) => actualizarCantidad(index, Number.parseInt(e.target.value) || 1)}
                               className="w-12 text-center bg-gray-700 text-white border-0 py-1"
                               min="1"
                             />

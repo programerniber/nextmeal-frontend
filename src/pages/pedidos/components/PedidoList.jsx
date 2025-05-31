@@ -2,10 +2,7 @@
 
 import { useState, useEffect } from "react"
 import {
-  Clock,
-  CheckCircle,
   XCircle,
-  Utensils,
   Search,
   RefreshCw,
   Filter,
@@ -20,6 +17,26 @@ import {
 import { fetchPedidos, deletePedido, togglePedidoEstado } from "../api/pedidoservice.js"
 import CambiarEstadoModal from "../modals/CambiarEstadoModal.jsx"
 import PedidoDetailModal from "../modals/PedidoDetailModal.jsx"
+import { toast } from "react-toastify"
+import {
+  DndContext,
+  DragOverlay,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
   const [pedidos, setPedidos] = useState([])
@@ -38,9 +55,8 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
   const [filterEstado, setFilterEstado] = useState("todos")
   const [sortField, setSortField] = useState("fecha_pedido")
   const [sortDirection, setSortDirection] = useState("desc")
-  // Nuevos estados para búsqueda avanzada
   const [searchCategory, setSearchCategory] = useState("all")
-  const [showAdvancedSearch,] = useState(false)
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false)
 
   const itemsPerPage = 5
 
@@ -63,9 +79,11 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
       const data = await fetchPedidos()
       setPedidos(data || [])
       setError(null)
+      
     } catch (err) {
       setError("Error al cargar los pedidos")
       console.error("Error al cargar pedidos:", err)
+      toast.error("Error al cargar los pedidos. Por favor, intenta nuevamente.")
     } finally {
       setLoading(false)
     }
@@ -85,21 +103,26 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
   const confirmDelete = async () => {
     try {
       await deletePedido(pedidoToDelete.id)
-      onDelete() // Recargar la lista
+      // Actualizar la lista local directamente
+      setPedidos(prevPedidos => prevPedidos.filter(p => p.id !== pedidoToDelete.id))
+      onDelete() // Llamar callback si es necesario
       setIsDeleting(false)
       setPedidoToDelete(null)
+      toast.success(`Pedido #${pedidoToDelete.id} eliminado exitosamente`)
     } catch (error) {
       console.error("Error al eliminar pedido:", error)
       setError("Error al eliminar: " + error.message)
+      toast.error(`Error al eliminar el pedido: ${error.message}`)
     }
   }
 
   const handleChangeStatus = (pedido) => {
     // No permitir cambiar el estado si ya está terminado
     if (pedido.estado === "terminado") {
-      return;
+      toast.warning("No se puede cambiar el estado de pedidos terminados")
+      return
     }
-    
+
     setPedidoToChangeStatus(pedido)
     setShowEstadoModal(true)
   }
@@ -108,12 +131,32 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
     try {
       setIsUpdating(true)
       await togglePedidoEstado(pedidoToChangeStatus.id, estado)
-      onRefresh() // Recargar la lista
+      
+      // Actualizar la lista local
+      setPedidos(prevPedidos => 
+        prevPedidos.map(pedido => 
+          pedido.id === pedidoToChangeStatus.id 
+            ? { ...pedido, estado }
+            : pedido
+        )
+      )
+      
+      onRefresh() // Llamar callback si es necesario
       setShowEstadoModal(false)
+
+      const estadoTexto = {
+        pendiente: "Pendiente",
+        preparacion: "En Preparación",
+        terminado: "Terminado",
+        cancelado: "Cancelado",
+      }
+
+      toast.success(`Estado del pedido #${pedidoToChangeStatus.id} cambiado a: ${estadoTexto[estado]}`)
       setPedidoToChangeStatus(null)
     } catch (error) {
       console.error("Error al cambiar estado del pedido:", error)
       setError("Error al cambiar estado: " + error.message)
+      toast.error(`Error al cambiar el estado: ${error.message}`)
     } finally {
       setIsUpdating(false)
     }
@@ -121,6 +164,7 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
 
   const handleViewDetail = (pedido) => {
     setShowDetail(pedido)
+    toast.info(`Mostrando detalles del pedido #${pedido.id}`)
   }
 
   // Función para ordenar pedidos
@@ -132,8 +176,8 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
     } else if (sortField === "total") {
       return sortDirection === "asc" ? a.total - b.total : b.total - a.total
     } else if (sortField === "cliente") {
-      const nombreA = a.cliente?.nombreCompleto || ""
-      const nombreB = b.cliente?.nombreCompleto || ""
+      const nombreA = a.Cliente?.nombrecompleto || ""
+      const nombreB = b.Cliente?.nombrecompleto || ""
       return sortDirection === "asc" ? nombreA.localeCompare(nombreB) : nombreB.localeCompare(nombreA)
     }
     return 0
@@ -158,7 +202,8 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
       if (searchCategory === "cliente") {
         return pedido.Cliente?.nombrecompleto?.toLowerCase().includes(searchLower)
       } else if (searchCategory === "producto") {
-        return pedido.producto?.nombre?.toLowerCase().includes(searchLower)
+        // Corregir la búsqueda de productos
+        return pedido.Productos?.some((p) => p.nombre?.toLowerCase().includes(searchLower))
       } else if (searchCategory === "id") {
         return pedido.id.toString().includes(debouncedSearchTerm)
       } else if (searchCategory === "monto") {
@@ -169,8 +214,8 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
         // Búsqueda en todos los campos
         return (
           pedido.Cliente?.nombrecompleto?.toLowerCase().includes(searchLower) ||
-          pedido.direccion_envio?.toLowerCase().includes(searchLower) || // Nueva línea agregada
-          pedido.Productos?.some(p => p.nombre?.toLowerCase().includes(searchLower)) || // Modificado
+          pedido.direccion_envio?.toLowerCase().includes(searchLower) ||
+          pedido.Productos?.some((p) => p.nombre?.toLowerCase().includes(searchLower)) ||
           pedido.id.toString().includes(debouncedSearchTerm) ||
           pedido.total.toString().includes(debouncedSearchTerm)
         )
@@ -191,6 +236,48 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
     cancelado: filteredPedidos.filter((p) => p.estado === "cancelado"),
   }
 
+  // Función para encontrar un pedido por ID
+  const findPedidoById = (id) => {
+    return pedidos.find(p => p.id === id) || null
+  }
+
+  // Función para actualizar el estado de un pedido en Kanban
+  const handleUpdatePedidoEstado = async (pedidoId, nuevoEstado) => {
+    const pedido = findPedidoById(pedidoId)
+    if (!pedido) return
+
+    // No permitir mover pedidos terminados
+    if (pedido.estado === 'terminado') {
+      toast.warning("No se puede cambiar el estado de pedidos terminados")
+      return
+    }
+
+    try {
+      await togglePedidoEstado(pedidoId, nuevoEstado)
+      
+      // Actualizar la lista local
+      setPedidos(prevPedidos => 
+        prevPedidos.map(p => 
+          p.id === pedidoId 
+            ? { ...p, estado: nuevoEstado }
+            : p
+        )
+      )
+
+      const estadoTexto = {
+        pendiente: "Pendiente",
+        preparacion: "En Preparación",
+        terminado: "Terminado",
+        cancelado: "Cancelado",
+      }
+
+      toast.success(`Estado del pedido #${pedidoId} cambiado a: ${estadoTexto[nuevoEstado]}`)
+    } catch (error) {
+      console.error("Error al cambiar estado del pedido:", error)
+      toast.error(`Error al cambiar el estado: ${error.message}`)
+    }
+  }
+
   // Componente para renderizar una fila de la tabla
   const PedidoRow = ({ pedido, onEdit, handleViewDetail, handleDeleteClick, handleChangeStatus, isUpdating }) => {
     const estadoClasses = {
@@ -199,36 +286,34 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
       terminado: "bg-green-900 text-green-300 border-green-500",
       cancelado: "bg-red-900 text-red-300 border-red-500",
     }
-    
+
     return (
       <tr className="hover:bg-gray-800 transition-colors">
         {/* ID */}
-        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
-          #{pedido.id}
-        </td>
-        
+        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">#{pedido.id}</td>
+
         {/* Cliente */}
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
-          {pedido.Cliente?.nombrecompleto}
-        </td>
-        
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-white">{pedido.Cliente?.nombrecompleto}</td>
+
         {/* Total */}
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
           ${formatearPesosColombianos(pedido.total)}
         </td>
-        
+
         {/* Estado */}
         <td className="px-6 py-4 whitespace-nowrap">
           <button
             onClick={() => handleChangeStatus(pedido)}
             disabled={isUpdating || pedido.estado === "terminado"}
             className={`px-2 py-1 inline-flex items-center text-xs leading-5 font-semibold rounded-full border ${estadoClasses[pedido.estado]} transition-colors ${pedido.estado === "terminado" ? "opacity-50 cursor-not-allowed" : ""}`}
-            title={pedido.estado === "terminado" ? "No se puede cambiar el estado de pedidos terminados" : "Cambiar estado"}
+            title={
+              pedido.estado === "terminado" ? "No se puede cambiar el estado de pedidos terminados" : "Cambiar estado"
+            }
           >
             {pedido.estado.charAt(0).toUpperCase() + pedido.estado.slice(1)}
           </button>
         </td>
-        
+
         {/* Fecha */}
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
           {new Date(pedido.fecha_pedido).toLocaleString("es-CO", {
@@ -239,7 +324,7 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
             minute: "2-digit",
           })}
         </td>
-        
+
         {/* Acciones */}
         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
           <div className="flex space-x-2">
@@ -270,7 +355,7 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
       </tr>
     )
   }
-  
+
   // Componente para tarjeta de pedido en vista Kanban
   const PedidoCard = ({ pedido }) => {
     const borderColors = {
@@ -286,9 +371,15 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
       >
         <div className="flex-grow">
           <h3 className="text-white text-center text-lg font-semibold mb-2">
-            {pedido.Cliente?.nombrecompleto || "Sin cliente"}
+            Pedido #{pedido.id}
           </h3>
+          <p className="text-white text-center text-sm mb-2">
+            {pedido.Cliente?.nombrecompleto || "Sin cliente"}
+          </p>
           <p className="text-center text-sm text-gray-400 mb-2">
+            ${formatearPesosColombianos(pedido.total)}
+          </p>
+          <p className="text-center text-xs text-gray-500 mb-2">
             {new Date(pedido.fecha_pedido).toLocaleString("es-CO", {
               day: "2-digit",
               month: "2-digit",
@@ -307,17 +398,16 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
           >
             <Eye size={18} />
           </button>
-          <button
-            onClick={() => onEdit(pedido)}
-            className="text-orange-500 hover:text-orange-400"
-            title="Editar"
-          >
-            <Edit size={18} />
-          </button>
+            {pedido.estado !== "terminado" && (
+            <button onClick={() => onEdit(pedido)} className="text-orange-500 hover:text-orange-400" title="Editar">
+              <Edit size={18} />
+            </button>
+          )}
         </div>
       </div>
     )
   }
+
   // Componente para la barra de búsqueda mejorada
   const SearchBar = () => (
     <div className="flex flex-col gap-4 mb-6">
@@ -339,7 +429,6 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
                 <XIcon size={16} />
               </button>
             )}
-            
           </div>
         </div>
 
@@ -347,7 +436,11 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
           <div className="relative">
             <select
               value={filterEstado}
-              onChange={(e) => setFilterEstado(e.target.value)}
+              onChange={(e) => {
+                setFilterEstado(e.target.value)
+                const estadoTexto = e.target.value === "todos" ? "todos los estados" : e.target.value
+                toast.info(`Filtro aplicado: ${estadoTexto}`)
+              }}
               className="appearance-none bg-gray-800 border border-gray-700 text-white py-3 px-4 pr-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
             >
               <option value="todos">Todos los estados</option>
@@ -363,7 +456,26 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
           </div>
 
           <button
-            onClick={() => setViewMode(viewMode === "table" ? "kanban" : "table")}
+            onClick={() => {
+              setShowAdvancedSearch(!showAdvancedSearch)
+              toast.info(`Búsqueda avanzada ${!showAdvancedSearch ? 'activada' : 'desactivada'}`)
+            }}
+            className={`px-4 py-2 rounded-lg transition-colors border ${
+              showAdvancedSearch 
+                ? 'bg-orange-600 text-white border-orange-500' 
+                : 'bg-gray-800 text-white border-gray-700 hover:bg-gray-700'
+            }`}
+            title="Búsqueda avanzada"
+          >
+            Avanzada
+          </button>
+
+          <button
+            onClick={() => {
+              const nuevoModo = viewMode === "table" ? "kanban" : "table"
+              setViewMode(nuevoModo)
+              toast.info(`Vista cambiada a: ${nuevoModo === "table" ? "Tabla" : "Kanban"}`)
+            }}
             className="p-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors border border-gray-700 px-4"
             title={viewMode === "table" ? "Ver como Kanban" : "Ver como Tabla"}
           >
@@ -371,7 +483,10 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
           </button>
 
           <button
-            onClick={onRefresh}
+            onClick={() => {
+              loadPedidos() // Cambiar por loadPedidos en lugar de onRefresh
+              toast.info("Actualizando lista de pedidos...")
+            }}
             className="p-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors border border-gray-700"
             title="Refrescar"
           >
@@ -535,9 +650,9 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
         <tbody className="divide-y divide-gray-800">
           {paginatedPedidos.length > 0 ? (
             paginatedPedidos.map((pedido) => (
-              <PedidoRow 
-                key={pedido.id} 
-                pedido={pedido} 
+              <PedidoRow
+                key={pedido.id}
+                pedido={pedido}
                 onEdit={onEdit}
                 handleViewDetail={handleViewDetail}
                 handleDeleteClick={handleDeleteClick}
@@ -557,146 +672,250 @@ const PedidoList = ({ onEdit, onDelete, onRefresh }) => {
     </div>
   )
 
-  // Vista de Kanban
-  const KanbanView = () => {
-    const columnStyle = "bg-gray-900 rounded-lg p-4 min-h-[400px] w-full md:w-64"
-    const headerStyle = "text-lg font-bold mb-4 pb-2 border-b"
+  // Componente para tarjeta de pedido draggable (única declaración)
+  const DraggablePedidoCard = ({ pedido }) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ 
+      id: pedido.id,
+      disabled: pedido.estado === 'terminado'
+    });
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+    };
 
     return (
-      <div className="flex flex-col md:flex-row gap-4 overflow-x-auto pb-4">
-        <div className={columnStyle}>
-          <h3 className={`${headerStyle} text-yellow-500 border-yellow-500`}>
-            Pendientes ({pedidosByEstado.pendiente.length})
-          </h3>
-          <div className="space-y-3">
-            {pedidosByEstado.pendiente.length > 0 ? (
-              pedidosByEstado.pendiente.map((pedido) => <PedidoCard key={pedido.id} pedido={pedido} />)
-            ) : (
-              <p className="text-gray-500 text-center py-8">No hay pedidos pendientes</p>
-            )}
-          </div>
-        </div>
-
-        <div className={columnStyle}>
-          <h3 className={`${headerStyle} text-blue-500 border-blue-500`}>
-            En Preparación ({pedidosByEstado.preparacion.length})
-          </h3>
-          <div className="space-y-3">
-            {pedidosByEstado.preparacion.length > 0 ? (
-              pedidosByEstado.preparacion.map((pedido) => <PedidoCard key={pedido.id} pedido={pedido} />)
-            ) : (
-              <p className="text-gray-500 text-center py-8">No hay pedidos en preparación</p>
-            )}
-          </div>
-        </div>
-
-        <div className={columnStyle}>
-          <h3 className={`${headerStyle} text-green-500 border-green-500`}>
-            Terminados ({pedidosByEstado.terminado.length})
-          </h3>
-          <div className="space-y-3">
-            {pedidosByEstado.terminado.length > 0 ? (
-              pedidosByEstado.terminado.map((pedido) => <PedidoCard key={pedido.id} pedido={pedido} />)
-            ) : (
-              <p className="text-gray-500 text-center py-8">No hay pedidos terminados</p>
-            )}
-          </div>
-        </div>
-
-        <div className={columnStyle}>
-          <h3 className={`${headerStyle} text-red-500 border-red-500`}>
-            Cancelados ({pedidosByEstado.cancelado.length})
-          </h3>
-          <div className="space-y-3">
-            {pedidosByEstado.cancelado.length > 0 ? (
-              pedidosByEstado.cancelado.map((pedido) => <PedidoCard key={pedido.id} pedido={pedido} />)
-            ) : (
-              <p className="text-gray-500 text-center py-8">No hay pedidos cancelados</p>
-            )}
-          </div>
-        </div>
+      <div
+        ref={setNodeRef}
+        style={style}
+        {...attributes}
+        {...listeners}
+        className={`
+          ${pedido.estado === 'terminado' 
+            ? 'cursor-not-allowed opacity-75' 
+            : 'cursor-grab hover:bg-gray-750 active:cursor-grabbing'
+          }
+          transition-colors duration-200
+        `}
+      >
+        <PedidoCard pedido={pedido} />
       </div>
-    )
-  }
+    );
+  };
 
+  // Componente para las columnas del Kanban
+  const DroppableColumn = ({  title, pedidos, color, children }) => {
+    return (
+      <SortableContext items={pedidos.map(p => p.id)} strategy={verticalListSortingStrategy}>
+        <div className="bg-gray-900 rounded-lg p-4 min-h-[400px] w-full md:w-64">
+          <h3 className={`text-lg font-bold mb-4 pb-2 border-b text-${color}-500 border-${color}-500`}>
+            {title} ({pedidos.length})
+          </h3>
+          <div className="space-y-3">
+            {pedidos.length > 0 ? (
+              pedidos.map((pedido) => (
+                <DraggablePedidoCard key={pedido.id} pedido={pedido} />
+              ))
+            ) : (
+              <p className="text-gray-500 text-center py-8">
+                {children}
+              </p>
+            )}
+          </div>
+           </div>
+      </SortableContext>
+    );
+  };
+
+  // Configuración de sensores para drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Manejador para el evento de arrastrar y soltar
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+
+    if (!over) return;
+
+    const activeId = active.id;
+    const overId = over.id;
+
+    // Encontrar el pedido que se está moviendo
+    const activePedido = findPedidoById(activeId);
+    if (!activePedido) return;
+
+    // Determinar el nuevo estado basado en la columna de destino
+    let nuevoEstado = null;
+    
+    // Si se suelta sobre una columna específica
+    const columnIds = ['pendiente', 'preparacion', 'terminado', 'cancelado'];
+    if (columnIds.includes(overId)) {
+      nuevoEstado = overId;
+    } else {
+      // Si se suelta sobre otro pedido, determinar la columna por el estado del pedido destino
+      const overPedido = findPedidoById(overId);
+      if (overPedido) {
+        nuevoEstado = overPedido.estado;
+      }
+    }
+
+    // Solo actualizar si el estado cambió
+    if (nuevoEstado && nuevoEstado !== activePedido.estado) {
+      handleUpdatePedidoEstado(activeId, nuevoEstado);
+    }
+  };
+
+  // Vista Kanban
+  const KanbanView = () => (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <DroppableColumn
+          id="pendiente"
+          title="Pendientes"
+          pedidos={pedidosByEstado.pendiente}
+          color="yellow"
+        >
+          No hay pedidos pendientes
+        </DroppableColumn>
+        
+        <DroppableColumn
+          id="preparacion"
+          title="En Preparación"
+          pedidos={pedidosByEstado.preparacion}
+          color="blue"
+        >
+          No hay pedidos en preparación
+        </DroppableColumn>
+        
+        <DroppableColumn
+          id="terminado"
+          title="Terminados"
+          pedidos={pedidosByEstado.terminado}
+          color="green"
+        >
+          No hay pedidos terminados
+        </DroppableColumn>
+        
+        <DroppableColumn
+          id="cancelado"
+          title="Cancelados"
+          pedidos={pedidosByEstado.cancelado}
+          color="red"
+        >
+          No hay pedidos cancelados
+        </DroppableColumn>
+      </div>
+
+      <DragOverlay>
+        {/* Aquí puedes agregar una vista previa del elemento que se está arrastrando */}
+      </DragOverlay>
+    </DndContext>
+  );
+
+  // Renderizado principal del componente
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-600"></div>
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-orange-500"></div>
       </div>
-    )
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-900 border border-red-500 text-red-200 px-4 py-3 rounded relative" role="alert">
+        <strong className="font-bold">Error: </strong>
+        <span className="block sm:inline">{error}</span>
+        <button
+          onClick={loadPedidos}
+          className="ml-4 bg-red-700 hover:bg-red-600 text-white px-3 py-1 rounded text-sm"
+        >
+          Reintentar
+        </button>
+      </div>
+    );
   }
 
   return (
-    <div>
+    <div className="space-y-6">
+      {/* Barra de búsqueda */}
       <SearchBar />
 
-      {error && (
-        <div className="bg-red-900 text-red-200 p-4 mb-4 rounded-lg border border-red-700">
-          <p className="flex items-center">
-            <XCircle className="mr-2" size={20} />
-            {error}
-          </p>
-        </div>
-      )}
-
+      {/* Vista principal */}
       {viewMode === "table" ? <TableView /> : <KanbanView />}
 
+      {/* Paginación (solo para vista de tabla) */}
       {viewMode === "table" && <Pagination />}
 
       {/* Modal de confirmación de eliminación */}
       {isDeleting && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-900 rounded-lg p-6 w-full max-w-md mx-4 border border-gray-700">
-            <h3 className="text-xl font-bold text-white mb-4">Confirmar eliminación</h3>
+          <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 max-w-md w-full mx-4">
+            <h3 className="text-lg font-medium text-white mb-4">Confirmar eliminación</h3>
             <p className="text-gray-300 mb-6">
-              ¿Estás seguro de que deseas eliminar el pedido #{pedidoToDelete?.id}? Esta acción no se puede deshacer.
+              ¿Estás seguro de que deseas eliminar el pedido #{pedidoToDelete?.id}?
             </p>
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setIsDeleting(false)}
-                className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
-              >
-                Cancelar
-              </button>
+            <div className="flex space-x-4">
               <button
                 onClick={confirmDelete}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition-colors"
               >
                 Eliminar
+              </button>
+              <button
+                onClick={() => {
+                  setIsDeleting(false);
+                  setPedidoToDelete(null);
+                }}
+                className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg transition-colors"
+              >
+                Cancelar
               </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* Modal de cambio de estado */}
+      {showEstadoModal && (
+        <CambiarEstadoModal
+          isOpen={showEstadoModal}
+          onClose={() => {
+            setShowEstadoModal(false);
+            setPedidoToChangeStatus(null);
+          }}
+          onConfirm={confirmChangeStatus}
+          pedido={pedidoToChangeStatus}
+          isUpdating={isUpdating}
+        />
+      )}
+
       {/* Modal de detalles del pedido */}
       {showDetail && (
         <PedidoDetailModal
-          pedido={showDetail}
+          isOpen={!!showDetail}
           onClose={() => setShowDetail(null)}
-          onEdit={() => {
-            onEdit(showDetail)
-            setShowDetail(null)
-          }}
-          onChangeStatus={() => {
-            handleChangeStatus(showDetail)
-            setShowDetail(null)
-          }}
-        />
-      )}
-
-      {/* Modal para cambiar estado */}
-      {showEstadoModal && (
-        <CambiarEstadoModal
-          pedido={pedidoToChangeStatus}
-          onClose={() => setShowEstadoModal(false)}
-          onConfirm={confirmChangeStatus}
-          isLoading={isUpdating}
+          pedido={showDetail}
         />
       )}
     </div>
-  )
-}
+  );
+};
 
-export default PedidoList
+export default PedidoList;

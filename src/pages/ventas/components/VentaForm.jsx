@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { X, Receipt, CreditCard, Banknote, CheckCircle, AlertCircle, User } from "lucide-react"
+import { toast } from "react-toastify"
 import { createVenta, updateVenta, fetchPedidosTerminados } from "../api/ventaservice.js"
 import SelectField from "../../clientes/components/form/SelectField.jsx"
 
@@ -25,7 +26,7 @@ const VentaForm = ({ venta, onClose, onSave }) => {
       try {
         setLoading(true)
         const pedidosData = await fetchPedidosTerminados()
-        setPedidos(pedidosData || []) // Asegurar que siempre tengamos un array
+        setPedidos(pedidosData || [])
       } catch (error) {
         console.error("Error al cargar pedidos:", error)
         setSubmitError("Error al cargar pedidos: " + (error.message || "Error desconocido"))
@@ -101,15 +102,21 @@ const VentaForm = ({ venta, onClose, onSave }) => {
     try {
       // Preparar datos para enviar
       const ventaData = {
-        id_pedido: parseInt(formData.id_pedido, 10),
+        id_pedido: Number.parseInt(formData.id_pedido, 10),
         metodo_pago: formData.metodo_pago,
       }
 
       let respuesta
       if (venta) {
         respuesta = await updateVenta(venta.id, ventaData)
+        // SOLO mostrar toast para edición exitosa
+        toast.success(`¡Venta #${venta.id} actualizada exitosamente!`, {
+          position: "top-right",
+          autoClose: 4000,
+        })
       } else {
         respuesta = await createVenta(ventaData)
+        // No mostrar toast para creación, solo para edición
       }
 
       console.log("Respuesta de guardar venta:", respuesta)
@@ -118,7 +125,8 @@ const VentaForm = ({ venta, onClose, onSave }) => {
       onSave(respuesta)
     } catch (error) {
       console.error("Error al guardar venta:", error)
-      setSubmitError(error.message || "Error al guardar la venta")
+      const errorMessage = error.message || "Error al guardar la venta"
+      setSubmitError(errorMessage)
     } finally {
       setIsSubmitting(false)
     }
@@ -292,9 +300,7 @@ const VentaForm = ({ venta, onClose, onSave }) => {
           {!pedidoSeleccionado && formData.id_pedido && (
             <div className="mb-6 bg-yellow-900 bg-opacity-20 p-4 rounded-lg border border-yellow-700 flex items-start">
               <AlertCircle className="text-yellow-500 mr-2 mt-0.5 flex-shrink-0" size={20} />
-              <p className="text-yellow-300 text-sm">
-               
-              </p>
+              <p className="text-yellow-300 text-sm">Pedido no encontrado. Por favor, selecciona un pedido válido.</p>
             </div>
           )}
 

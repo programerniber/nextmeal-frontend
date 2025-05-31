@@ -18,9 +18,9 @@ import {
   XCircle,
   Banknote,
 } from "lucide-react"
+import { toast } from "react-toastify"
 import { fetchVentas, deleteVenta } from "../api/ventaservice"
 import VentaDetailModal from "./modals/VentaDetailModal.jsx"
-
 
 const VentaList = ({ onEdit, onDelete, onRefresh }) => {
   const [ventas, setVentas] = useState([])
@@ -35,20 +35,20 @@ const VentaList = ({ onEdit, onDelete, onRefresh }) => {
   const [filterMetodoPago, setFilterMetodoPago] = useState("todos")
   const [sortField, setSortField] = useState("fecha_venta")
   const [sortDirection, setSortDirection] = useState("desc")
-  const [searchCategory, setSearchCategory] = useState("all")
-  const [showAdvancedSearch] = useState(false)
   const [statsVisible, setStatsVisible] = useState(false)
 
   const itemsPerPage = 5
 
-  // Implementar debounce para la búsqueda
+  // Implementar debounce para la búsqueda - OPTIMIZADO
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm)
-      setCurrentPage(1)
+      if (debouncedSearchTerm !== searchTerm) {
+        setDebouncedSearchTerm(searchTerm)
+        setCurrentPage(1)
+      }
     }, 300)
     return () => clearTimeout(timer)
-  }, [searchTerm])
+  }, [searchTerm, debouncedSearchTerm])
 
   useEffect(() => {
     loadVentas()
@@ -58,15 +58,22 @@ const VentaList = ({ onEdit, onDelete, onRefresh }) => {
     try {
       setLoading(true)
       const data = await fetchVentas()
-      console.log("Ventas cargadas:", data) // Añadido para depuración
+      console.log("Ventas cargadas:", data)
       setVentas(data || [])
       setError(null)
     } catch (err) {
-      setError("Error al cargar las ventas")
+      const errorMessage = "Error al cargar las ventas"
+      setError(errorMessage)
       console.error("Error al cargar ventas:", err)
     } finally {
       setLoading(false)
     }
+  }
+
+  // Función para obtener el nombre del cliente de manera consistente
+  const obtenerNombreCliente = (venta) => {
+    // Intentar diferentes rutas para obtener el nombre del cliente
+    return venta.Pedido?.Cliente?.nombrecompleto || venta.Cliente?.nombrecompleto || "Sin nombre"
   }
 
   // Función para formatear valores en pesos colombianos
@@ -83,12 +90,20 @@ const VentaList = ({ onEdit, onDelete, onRefresh }) => {
   const confirmDelete = async () => {
     try {
       await deleteVenta(ventaToDelete.id)
-      onDelete() // Recargar la lista
+
+      // SOLO mostrar toast para eliminación exitosa
+      toast.success(`¡Venta #${ventaToDelete.id} eliminada exitosamente!`, {
+        position: "top-right",
+        autoClose: 4000,
+      })
+
+      onDelete()
       setIsDeleting(false)
       setVentaToDelete(null)
     } catch (error) {
       console.error("Error al eliminar venta:", error)
-      setError("Error al eliminar: " + error.message)
+      const errorMessage = "Error al eliminar: " + error.message
+      setError(errorMessage)
     }
   }
 
@@ -105,15 +120,14 @@ const VentaList = ({ onEdit, onDelete, onRefresh }) => {
     } else if (sortField === "total_pagar") {
       return sortDirection === "asc" ? a.total_pagar - b.total_pagar : b.total_pagar - a.total_pagar
     } else if (sortField === "cliente") {
-      // Corregido para usar Cliente (con mayúscula inicial)
-      const nombreA = a.Cliente?.nombrecompleto || ""
-      const nombreB = b.Cliente?.nombrecompleto || ""
+      const nombreA = obtenerNombreCliente(a)
+      const nombreB = obtenerNombreCliente(b)
       return sortDirection === "asc" ? nombreA.localeCompare(nombreB) : nombreB.localeCompare(nombreA)
     }
     return 0
   }
 
-  // Filtrar y ordenar ventas con búsqueda avanzada
+  // Filtrar ventas - SIMPLIFICADO para enfocarse en búsqueda por cliente
   const filteredVentas = ventas
     .filter((venta) => {
       // Filtro por método de pago
@@ -127,29 +141,10 @@ const VentaList = ({ onEdit, onDelete, onRefresh }) => {
       }
 
       const searchLower = debouncedSearchTerm.toLowerCase()
-      
-      // Búsqueda por categoría específica
-      if (searchCategory === "cliente") {
-        // Corregido para usar Cliente (con mayúscula inicial)
-        return venta.Cliente?.nombrecompleto?.toLowerCase().includes(searchLower)
-      } else if (searchCategory === "pedido") {
-        return venta.id_pedido.toString().includes(debouncedSearchTerm)
-      } else if (searchCategory === "id") {
-        return venta.id.toString().includes(debouncedSearchTerm)
-      } else if (searchCategory === "monto") {
-        // Búsqueda por monto (aproximado)
-        const montoStr = venta.total_pagar?.toString() || ""
-        return montoStr.includes(debouncedSearchTerm)
-      } else {
-        // Búsqueda en todos los campos
-        // Corregido para usar Cliente (con mayúscula inicial)
-        return (
-          venta.Cliente?.nombrecompleto?.toLowerCase().includes(searchLower) ||
-          venta.id_pedido.toString().includes(debouncedSearchTerm) ||
-          venta.id.toString().includes(debouncedSearchTerm) ||
-          (venta.total_pagar?.toString() || "").includes(debouncedSearchTerm)
-        )
-      }
+      const nombreCliente = obtenerNombreCliente(venta).toLowerCase()
+
+      // Búsqueda principal por nombre de cliente (como especifica el requerimiento)
+      return nombreCliente.includes(searchLower)
     })
     .sort(sortVentas)
 
@@ -178,24 +173,15 @@ const VentaList = ({ onEdit, onDelete, onRefresh }) => {
       efectivo: "bg-green-900 text-green-300 border-green-500",
       transferencia: "bg-blue-900 text-blue-300 border-blue-500",
     }
-  
+
     return (
       <tr className="hover:bg-gray-800 transition-colors">
-        {/* ID */}
         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">#{venta.id}</td>
-
-        {/* Pedido */}
         <td className="px-6 py-4 whitespace-nowrap text-sm text-white">#{venta.id_pedido}</td>
-
-        {/* Cliente - Corregido para usar Cliente (con mayúscula inicial) */}
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-white">{venta.Pedido?.Cliente?.nombrecompleto || "Sin nombre"}</td>
-         
-        {/* Total */}
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-white">{obtenerNombreCliente(venta)}</td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
           ${formatearPesosColombianos(venta.total_pagar || 0)}
         </td>
-
-        {/* Método de Pago */}
         <td className="px-6 py-4 whitespace-nowrap">
           <span
             className={`px-2 py-1 inline-flex items-center text-xs leading-5 font-semibold rounded-full border ${metodoPagoClasses[venta.metodo_pago]}`}
@@ -213,25 +199,24 @@ const VentaList = ({ onEdit, onDelete, onRefresh }) => {
             )}
           </span>
         </td>
-
-        {/* Fecha */}
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-          {venta.fecha_venta ? new Date(venta.fecha_venta).toLocaleString("es-CO", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          }) : "Fecha no disponible"}
+          {venta.fecha_venta
+            ? new Date(venta.fecha_venta).toLocaleString("es-CO", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : "Fecha no disponible"}
         </td>
-
-        {/* Acciones */}
         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
           <div className="flex space-x-2">
             <button
               onClick={() => handleViewDetail(venta)}
               className="text-blue-400 hover:text-blue-300 transition-colors"
               title="Ver detalles"
+              type="button"
             >
               <Eye size={18} />
             </button>
@@ -239,6 +224,7 @@ const VentaList = ({ onEdit, onDelete, onRefresh }) => {
               onClick={() => onEdit(venta)}
               className="text-orange-500 hover:text-orange-400 transition-colors"
               title="Editar"
+              type="button"
             >
               <Edit size={18} />
             </button>
@@ -246,6 +232,7 @@ const VentaList = ({ onEdit, onDelete, onRefresh }) => {
               onClick={() => handleDeleteClick(venta)}
               className="text-red-500 hover:text-red-400 transition-colors"
               title="Eliminar"
+              type="button"
             >
               <Trash2 size={18} />
             </button>
@@ -265,14 +252,18 @@ const VentaList = ({ onEdit, onDelete, onRefresh }) => {
             <Search className="text-gray-400 ml-3" size={20} />
             <input
               type="text"
-              placeholder="Buscar..."
+              placeholder="Buscar por nombre de cliente..."
               className="w-full bg-transparent border-none text-white focus:outline-none px-3 py-3"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               autoComplete="off"
             />
             {searchTerm && (
-              <button onClick={() => setSearchTerm("")} className="text-gray-400 hover:text-white p-2 mr-1">
+              <button
+                onClick={() => setSearchTerm("")}
+                className="text-gray-400 hover:text-white p-2 mr-1"
+                type="button"
+              >
                 <XIcon size={16} />
               </button>
             )}
@@ -300,6 +291,7 @@ const VentaList = ({ onEdit, onDelete, onRefresh }) => {
             onClick={() => setStatsVisible(!statsVisible)}
             className="p-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors border border-gray-700 px-4"
             title={statsVisible ? "Ocultar estadísticas" : "Mostrar estadísticas"}
+            type="button"
           >
             <BarChart4 size={20} />
           </button>
@@ -308,70 +300,19 @@ const VentaList = ({ onEdit, onDelete, onRefresh }) => {
             onClick={onRefresh}
             className="p-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors border border-gray-700"
             title="Refrescar"
+            type="button"
           >
             <RefreshCw size={20} />
           </button>
         </div>
       </div>
 
-      {/* Opciones de búsqueda avanzada */}
-      {showAdvancedSearch && (
-        <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 animate-fadeIn">
-          <div className="mb-3">
-            <h4 className="text-white font-medium mb-2">Buscar por:</h4>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setSearchCategory("all")}
-                className={`px-3 py-1 rounded-full text-sm ${
-                  searchCategory === "all" ? "bg-orange-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                }`}
-              >
-                Todos los campos
-              </button>
-              <button
-                onClick={() => setSearchCategory("cliente")}
-                className={`px-3 py-1 rounded-full text-sm ${
-                  searchCategory === "cliente"
-                    ? "bg-orange-600 text-white"
-                    : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                }`}
-              >
-                Cliente
-              </button>
-              <button
-                onClick={() => setSearchCategory("pedido")}
-                className={`px-3 py-1 rounded-full text-sm ${
-                  searchCategory === "pedido"
-                    ? "bg-orange-600 text-white"
-                    : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                }`}
-              >
-                Pedido
-              </button>
-              <button
-                onClick={() => setSearchCategory("id")}
-                className={`px-3 py-1 rounded-full text-sm ${
-                  searchCategory === "id" ? "bg-orange-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                }`}
-              >
-                ID
-              </button>
-              <button
-                onClick={() => setSearchCategory("monto")}
-                className={`px-3 py-1 rounded-full text-sm ${
-                  searchCategory === "monto"
-                    ? "bg-orange-600 text-white"
-                    : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                }`}
-              >
-                Monto
-              </button>
-            </div>
-          </div>
-
-          <div className="text-sm text-gray-400">
-            <p>Resultados encontrados: {filteredVentas.length}</p>
-          </div>
+      {/* Mostrar resultados de búsqueda */}
+      {debouncedSearchTerm && (
+        <div className="text-sm text-gray-400">
+          {filteredVentas.length > 0
+            ? `${filteredVentas.length} venta(s) encontrada(s) para "${debouncedSearchTerm}"`
+            : `No se encontraron ventas para "${debouncedSearchTerm}"`}
         </div>
       )}
     </div>
@@ -379,7 +320,6 @@ const VentaList = ({ onEdit, onDelete, onRefresh }) => {
 
   // Componente para la paginación
   const Pagination = () => {
-    // Only show pagination if we have more than 5 items
     if (filteredVentas.length <= 5) return null
 
     return (
@@ -537,8 +477,15 @@ const VentaList = ({ onEdit, onDelete, onRefresh }) => {
             ))
           ) : (
             <tr>
-              <td colSpan="7" className="px-6 py-4 text-center text-gray-400">
-                No se encontraron ventas
+              <td colSpan="7" className="px-6 py-8 text-center text-gray-400">
+                {debouncedSearchTerm ? (
+                  <div>
+                    <p className="text-lg mb-2">No se encontraron ventas</p>
+                    <p className="text-sm">No hay ventas que coincidan con "{debouncedSearchTerm}"</p>
+                  </div>
+                ) : (
+                  "No hay ventas registradas"
+                )}
               </td>
             </tr>
           )}
