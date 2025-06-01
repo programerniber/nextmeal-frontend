@@ -203,10 +203,19 @@ export const deleteUsuario = async (id) => {
   }
 }
 
-// Función para cambiar el estado de un usuario
+// Modificar la función toggleUsuarioEstado para verificar el rol del usuario
 export const toggleUsuarioEstado = async (id, estadoActual) => {
   try {
     const token = localStorage.getItem("token")
+
+    // Obtener el usuario actual para verificar su rol
+    const userData = JSON.parse(localStorage.getItem("user") || "{}")
+
+    // Verificar que el usuario sea administrador
+    if (userData.id_rol !== 1) {
+      throw new Error("Solo los administradores pueden cambiar el estado de los usuarios")
+    }
+
     // Manejar el caso cuando estadoActual es undefined
     let nuevoEstado
     if (estadoActual === undefined || estadoActual === null) {
@@ -219,28 +228,15 @@ export const toggleUsuarioEstado = async (id, estadoActual) => {
       console.log(`Cambiando estado del usuario ${id} de ${estadoActual} a ${nuevoEstado}`)
     }
 
-    // Intentar con PATCH primero
-    try {
-      const res = await axios.patch(
-        `${VITE_API_URL}/autenticacion/usuarios/${id}/estado`,
-        { estado: nuevoEstado },
-        { headers: { Authorization: `Bearer ${token}` } },
-      )
-      console.log("Respuesta del servidor (PATCH):", res.data)
-      return res.data
-    } catch (patchError) {
-      // Si falla el PATCH, intentar con PUT como fallback
-      console.log("PATCH falló, intentando con PUT como fallback:", patchError.message)
+    // Intentar con PUT directamente a la ruta específica para cambiar estado
+    const res = await axios.put(
+      `${VITE_API_URL}/autenticacion/usuarios/${id}/estado`,
+      { estado: nuevoEstado },
+      { headers: { Authorization: `Bearer ${token}` } },
+    )
 
-      const res = await axios.put(
-        `${VITE_API_URL}/autenticacion/usuarios/${id}`,
-        { estado: nuevoEstado },
-        { headers: { Authorization: `Bearer ${token}` } },
-      )
-
-      console.log("Respuesta del servidor (fallback):", res.data)
-      return res.data
-    }
+    console.log("Respuesta del servidor:", res.data)
+    return res.data
   } catch (error) {
     console.error("Error al cambiar estado del usuario:", error)
     if (error.response?.data?.mensaje) {
@@ -249,6 +245,7 @@ export const toggleUsuarioEstado = async (id, estadoActual) => {
     throw error
   }
 }
+
 
 // Función para obtener todos los roles
 export const fetchRoles = async () => {

@@ -33,7 +33,6 @@ const Sidebar = () => {
       nombre: "Dashboard",
       icono: LayoutDashboard,
       ruta: "/dashboard",
-      soloAdmin:true,
     },
     {
       id: "clientes",

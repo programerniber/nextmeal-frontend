@@ -5,7 +5,12 @@ const VITE_API_URL = "http://localhost:3000/api"
 // ✅ Crear categoría (POST)
 export const createCategoria = async (categoryData) => {
   try {
-    const res = await axios.post(`${VITE_API_URL}/categoria`, categoryData)
+    const token = localStorage.getItem("token")
+    const res = await axios.post(`${VITE_API_URL}/categoria`, categoryData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
     return res.data
   } catch (error) {
     if (error.response?.data?.errores) {
@@ -30,7 +35,12 @@ export const createCategoria = async (categoryData) => {
 // ✅ Obtener todas las categorías (GET)
 export const fetchCategorias = async () => {
   try {
-    const res = await axios.get(`${VITE_API_URL}/categoria`)
+    const token = localStorage.getItem("token")
+    const res = await axios.get(`${VITE_API_URL}/categoria`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
 
     return res.data
   } catch (error) {
@@ -42,7 +52,12 @@ export const fetchCategorias = async () => {
 // ✅ Obtener categoría por ID (GET)
 export const fetchCategoriaById = async (id) => {
   try {
-    const res = await axios.get(`${VITE_API_URL}/categoria/${id}`)
+    const token = localStorage.getItem("token")
+    const res = await axios.get(`${VITE_API_URL}/categoria/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
 
     // Verificar la estructura de la respuesta
     if (res.data && res.data.data) {
@@ -64,7 +79,12 @@ export const fetchCategoriaById = async (id) => {
 // ✅ Actualizar categoría por ID (PUT)
 export const updateCategoria = async (id, categoryData) => {
   try {
-    const res = await axios.put(`${VITE_API_URL}/categoria/${id}`, categoryData)
+    const token = localStorage.getItem("token")
+    const res = await axios.put(`${VITE_API_URL}/categoria/${id}`, categoryData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
 
     // Verificar la estructura de la respuesta
     if (res.data && res.data.data) {
@@ -86,8 +106,13 @@ export const updateCategoria = async (id, categoryData) => {
 // ✅ Eliminar categoría por ID (DELETE)
 export const deleteCategoria = async (id) => {
   try {
+    const token = localStorage.getItem("token")
     console.log(`Eliminando categoría con ID: ${id}`)
-    const res = await axios.delete(`${VITE_API_URL}/categoria/${id}`)
+    const res = await axios.delete(`${VITE_API_URL}/categoria/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
     console.log("Categoría eliminada:", res.data.message || res.data)
     return res.data
   } catch (error) {
@@ -102,23 +127,46 @@ export const deleteCategoria = async (id) => {
 // ✅ Cambiar estado de la categoría (PATCH)
 export const toggleCategoriaEstado = async (id, estadoActual) => {
   try {
+    // Verificar si el usuario es administrador
+    const userData = JSON.parse(localStorage.getItem("user") || "{}")
+    if (userData.id_rol !== 1) {
+      throw new Error("Solo los administradores pueden cambiar el estado de las categorías")
+    }
+
+    const token = localStorage.getItem("token")
     const nuevoEstado = estadoActual === "activo" ? "inactivo" : "activo"
     console.log(`Cambiando estado de la categoría ${id} de ${estadoActual} a ${nuevoEstado}`)
 
     // Intentar con PATCH primero
     try {
-      const res = await axios.patch(`${VITE_API_URL}/categoria/${id}/estado`, {
-        estado: nuevoEstado,
-      })
+      const res = await axios.patch(
+        `${VITE_API_URL}/categoria/${id}/estado`,
+        {
+          estado: nuevoEstado,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      )
       console.log("Respuesta del servidor (PATCH):", res.data)
       return res.data
     } catch (patchError) {
       // Si falla el PATCH, intentar con PUT como fallback
       console.log("PATCH falló, intentando con PUT como fallback:", patchError.message)
 
-      const res = await axios.put(`${VITE_API_URL}/categoria/${id}`, {
-        estado: nuevoEstado,
-      })
+      const res = await axios.put(
+        `${VITE_API_URL}/categoria/${id}`,
+        {
+          estado: nuevoEstado,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      )
 
       console.log("Respuesta del servidor (fallback):", res.data)
       return res.data

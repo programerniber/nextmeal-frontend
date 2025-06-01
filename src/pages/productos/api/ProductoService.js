@@ -5,8 +5,13 @@ const VITE_API_URL = "http://localhost:3000/api"
 // ✅ Crear producto (POST)
 export const createProducto = async (productoData) => {
   try {
+    const token = localStorage.getItem("token")
     console.log("Enviando datos al servidor:", productoData)
-    const res = await axios.post(`${VITE_API_URL}/productos`, productoData)
+    const res = await axios.post(`${VITE_API_URL}/productos`, productoData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
     console.log("Respuesta del servidor:", res.data)
     return res.data.data
   } catch (error) {
@@ -32,7 +37,12 @@ export const createProducto = async (productoData) => {
 // ✅ Obtener todos los productos (GET)
 export const fetchProductos = async () => {
   try {
-    const res = await axios.get(`${VITE_API_URL}/productos`)
+    const token = localStorage.getItem("token")
+    const res = await axios.get(`${VITE_API_URL}/productos`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
     return res.data.data
   } catch (error) {
     console.error("Error al obtener productos", error)
@@ -43,7 +53,12 @@ export const fetchProductos = async () => {
 // ✅ Obtener producto por ID (GET)
 export const fetchProductoById = async (id) => {
   try {
-    const res = await axios.get(`${VITE_API_URL}/productos/${id}`)
+    const token = localStorage.getItem("token")
+    const res = await axios.get(`${VITE_API_URL}/productos/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
     return res.data.data
   } catch (error) {
     console.error("Error al obtener producto por ID", error)
@@ -57,8 +72,13 @@ export const fetchProductoById = async (id) => {
 // ✅ Actualizar producto por ID (PUT)
 export const updateProducto = async (id, productoData) => {
   try {
+    const token = localStorage.getItem("token")
     console.log(`Actualizando producto con ID ${id}:`, productoData)
-    const res = await axios.put(`${VITE_API_URL}/productos/${id}`, productoData)
+    const res = await axios.put(`${VITE_API_URL}/productos/${id}`, productoData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
     console.log("Respuesta del servidor:", res.data)
     return res.data.data
   } catch (error) {
@@ -73,8 +93,13 @@ export const updateProducto = async (id, productoData) => {
 // ✅ Eliminar producto por ID (DELETE)
 export const deleteProducto = async (id) => {
   try {
+    const token = localStorage.getItem("token")
     console.log(`Eliminando producto con ID: ${id}`)
-    const res = await axios.delete(`${VITE_API_URL}/productos/${id}`)
+    const res = await axios.delete(`${VITE_API_URL}/productos/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
     console.log("Producto eliminado:", res.data.message || res.data)
     return res.data
   } catch (error) {
@@ -89,23 +114,46 @@ export const deleteProducto = async (id) => {
 // ✅ Cambiar estado del producto (PATCH)
 export const toggleProductoEstado = async (id, estadoActual) => {
   try {
+    // Verificar si el usuario es administrador
+    const userData = JSON.parse(localStorage.getItem("user") || "{}")
+    if (userData.id_rol !== 1) {
+      throw new Error("Solo los administradores pueden cambiar el estado de los productos")
+    }
+
+    const token = localStorage.getItem("token")
     const nuevoEstado = estadoActual === "activo" ? "inactivo" : "activo"
     console.log(`Cambiando estado del producto ${id} de ${estadoActual} a ${nuevoEstado}`)
 
     // Intentar con PATCH primero
     try {
-      const res = await axios.patch(`${VITE_API_URL}/productos/${id}/estado`, {
-        estado: nuevoEstado,
-      })
+      const res = await axios.patch(
+        `${VITE_API_URL}/productos/${id}/estado`,
+        {
+          estado: nuevoEstado,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      )
       console.log("Respuesta del servidor (PATCH):", res.data)
       return res.data
     } catch (patchError) {
       // Si falla el PATCH, intentar con PUT como fallback
       console.log("PATCH falló, intentando con PUT como fallback:", patchError.message)
 
-      const res = await axios.put(`${VITE_API_URL}/productos/${id}`, {
-        estado: nuevoEstado,
-      })
+      const res = await axios.put(
+        `${VITE_API_URL}/productos/${id}`,
+        {
+          estado: nuevoEstado,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      )
 
       console.log("Respuesta del servidor (fallback):", res.data)
       return res.data

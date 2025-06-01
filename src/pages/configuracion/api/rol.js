@@ -46,7 +46,23 @@ export const crearRol = async (rolData) => {
     return response.data.data
   } catch (error) {
     console.error("Error al crear rol:", error)
-    throw new Error(error.response?.data?.message || "Error al crear rol")
+
+    // Obtener el mensaje de error del servidor
+    const errorMessage = error.response?.data?.message || error.response?.data?.error || "Error al crear rol"
+
+    // Verificar mensajes específicos de validación
+    if (errorMessage.includes("ya existe")) {
+      throw new Error("El nombre del rol ya existe en la base de datos")
+    } else if (errorMessage.includes("no debe contener números") || errorMessage.includes("números")) {
+      throw new Error("El nombre del rol no debe contener números")
+    } else if (
+      errorMessage.includes("no debe contener caracteres especiales") ||
+      errorMessage.includes("caracteres especiales")
+    ) {
+      throw new Error("El nombre del rol no debe contener caracteres especiales")
+    } else {
+      throw new Error(errorMessage)
+    }
   }
 }
 
@@ -62,7 +78,24 @@ export const actualizarRol = async (id, rolData) => {
     return response.data.data
   } catch (error) {
     console.error(`Error al actualizar rol con ID ${id}:`, error)
-    throw new Error(error.response?.data?.message || `Error al actualizar rol con ID ${id}`)
+
+    // Obtener el mensaje de error del servidor
+    const errorMessage =
+      error.response?.data?.message || error.response?.data?.error || `Error al actualizar rol con ID ${id}`
+
+    // Verificar mensajes específicos de validación
+    if (errorMessage.includes("ya existe")) {
+      throw new Error("El nombre del rol ya existe en la base de datos")
+    } else if (errorMessage.includes("no debe contener números") || errorMessage.includes("números")) {
+      throw new Error("El nombre del rol no debe contener números")
+    } else if (
+      errorMessage.includes("no debe contener caracteres especiales") ||
+      errorMessage.includes("caracteres especiales")
+    ) {
+      throw new Error("El nombre del rol no debe contener caracteres especiales")
+    } else {
+      throw new Error(errorMessage)
+    }
   }
 }
 

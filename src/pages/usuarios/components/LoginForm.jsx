@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Mail, Lock, AlertCircle } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
+import RecuperarPasswordModal from "../modals/RecuperarPasswordModal"
 
 const LoginForm = () => {
   const { signin, loading, errors } = useAuth()
@@ -10,6 +11,7 @@ const LoginForm = () => {
     email: "",
     password: "",
   })
+  const [showRecuperarModal, setShowRecuperarModal] = useState(false)
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -93,6 +95,15 @@ const LoginForm = () => {
                 Recordarme
               </label>
             </div>
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowRecuperarModal(true)}
+                className="text-sm text-blue-500 hover:text-blue-400 focus:outline-none"
+              >
+                ¿Olvidaste tu contraseña?
+              </button>
+            </div>
           </div>
 
           <div>
@@ -132,6 +143,9 @@ const LoginForm = () => {
           </div>
         </form>
       </div>
+
+      {/* Modal de recuperación de contraseña */}
+      {showRecuperarModal && <RecuperarPasswordModal onClose={() => setShowRecuperarModal(false)} />}
     </div>
   )
 }
