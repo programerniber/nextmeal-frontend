@@ -460,7 +460,7 @@ const DashboardManagement = () => {
     <div className="bg-gray-900 min-h-screen">
       {renderDashboardContent()}
     </div>
-  );
-};
-
-export default DashboardManagement;
+  )
+}
+//pipan
+export default DashboardManagement

@@ -5,8 +5,13 @@ const VITE_API_URL = "http://localhost:3000/api"
 // ✅ Crear cliente (POST)
 export const createCliente = async (clienteData) => {
   try {
+    const token = localStorage.getItem("token")
     console.log("Enviando datos al servidor:", clienteData)
-    const res = await axios.post(`${VITE_API_URL}/clientes`, clienteData)
+    const res = await axios.post(`${VITE_API_URL}/clientes`, clienteData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
     return res.data.data
   } catch (error) {
     if (error.response?.data?.errores) {
@@ -33,8 +38,13 @@ export const createCliente = async (clienteData) => {
 // ✅ Obtener todos los clientes (GET)
 export const fetchClientes = async () => {
   try {
+    const token = localStorage.getItem("token")
     console.log("Solicitando clientes al servidor...")
-    const res = await axios.get(`${VITE_API_URL}/clientes`)
+    const res = await axios.get(`${VITE_API_URL}/clientes`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
     console.log("Respuesta completa del servidor:", res)
 
     // Verificar la estructura de la respuesta
@@ -58,21 +68,15 @@ export const fetchClientes = async () => {
   }
 }
 
-// export const fetchClientes = async () => {
-//   try {
-//     const res = await axios.get(`${VITE_API_URL}/clientes`)
-//     console.log("Clientes obtenidos desde service:", res.data.data)
-//     return res.data
-//   } catch (error) {
-//     console.error("Error al obtener clientes", error)
-//     throw error
-//   }
-// }
-
 // ✅ Actualizar cliente por ID (PUT)
 export const updateCliente = async (id, clienteData) => {
   try {
-    const res = await axios.put(`${VITE_API_URL}/clientes/${id}`, clienteData)
+    const token = localStorage.getItem("token")
+    const res = await axios.put(`${VITE_API_URL}/clientes/${id}`, clienteData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
     console.log("Cliente actualizado:", res.data.data)
     return res.data.data
   } catch (error) {
@@ -87,8 +91,13 @@ export const updateCliente = async (id, clienteData) => {
 // ✅ Eliminar cliente por ID (DELETE)
 export const deleteCliente = async (id) => {
   try {
+    const token = localStorage.getItem("token")
     console.log(`Eliminando cliente con ID: ${id}`)
-    const res = await axios.delete(`${VITE_API_URL}/clientes/${id}`)
+    const res = await axios.delete(`${VITE_API_URL}/clientes/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
     console.log("Respuesta completa al eliminar:", res)
     return res.data
   } catch (error) {
@@ -106,30 +115,45 @@ export const deleteCliente = async (id) => {
 // ✅ Cambiar estado del cliente (PUT)
 export const toggleClienteEstado = async (id, estado) => {
   try {
-    const nuevoEstado = estado === "activo" ? "inactivo" : "activo";
-    console.log(`Cambiando estado del cliente ${id} de ${estado} a ${nuevoEstado}`);
-    
-    const res = await axios.patch(`${VITE_API_URL}/clientes/${id}/estado`, {
-      estado: nuevoEstado,
-    });
-    
-    console.log("Respuesta completa al cambiar estado:", res);
-    
+    // Verificar si el usuario es administrador
+    const userData = JSON.parse(localStorage.getItem("user") || "{}")
+    if (userData.id_rol !== 1) {
+      throw new Error("Solo los administradores pueden cambiar el estado de los clientes")
+    }
+
+    const token = localStorage.getItem("token")
+    const nuevoEstado = estado === "activo" ? "inactivo" : "activo"
+    console.log(`Cambiando estado del cliente ${id} de ${estado} a ${nuevoEstado}`)
+
+    const res = await axios.patch(
+      `${VITE_API_URL}/clientes/${id}/estado`,
+      {
+        estado: nuevoEstado,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    )
+
+    console.log("Respuesta completa al cambiar estado:", res)
+
     // Verifica la estructura de la respuesta
     if (res && res.data && res.data.exito) {
       // Devuelve los datos actualizados del cliente o al menos el estado actualizado
-      return res.data.data || { id, estado: nuevoEstado };
+      return res.data.data || { id, estado: nuevoEstado }
     }
-    
-    return { id, estado: nuevoEstado };
+
+    return { id, estado: nuevoEstado }
   } catch (error) {
-    console.error("Error al cambiar estado del cliente:", error);
+    console.error("Error al cambiar estado del cliente:", error)
     if (error.response) {
-      console.error("Detalles del error:", error.response.data);
+      console.error("Detalles del error:", error.response.data)
       if (error.response.data.mensaje) {
-        error.message = error.response.data.mensaje;
+        error.message = error.response.data.mensaje
       }
     }
-    throw error;
+    throw error
   }
-};
+}
