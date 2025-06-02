@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Doughnut, Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -10,12 +10,14 @@ import {
   BarElement,
   Title
 } from 'chart.js';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 // Registrar componentes de ChartJS
 ChartJS.register(
-  ArcElement, 
-  Tooltip, 
-  Legend, 
+  ArcElement,
+  Tooltip,
+  Legend,
   CategoryScale,
   LinearScale,
   BarElement,
@@ -23,7 +25,7 @@ ChartJS.register(
 );
 
 const DoughnutChart = ({ estadisticasSemanal = [], metodosPagoHoy = {} }) => {
-  
+
   console.log('🎯 DoughnutChart recibió:', {
     estadisticasSemanal: estadisticasSemanal?.length || 0,
     metodosPagoHoy: metodosPagoHoy,
@@ -36,7 +38,7 @@ const DoughnutChart = ({ estadisticasSemanal = [], metodosPagoHoy = {} }) => {
   const transferenciaMonto = metodosPagoHoy?.transferencia?.monto || 0;
   const totalMetodos = efectivoMonto + transferenciaMonto;
 
-  const datosDonut = {
+  const datosDonut = useMemo(() => ({
     labels: ['Efectivo', 'Transferencia'],
     datasets: [{
       data: [efectivoMonto, transferenciaMonto],
@@ -52,37 +54,41 @@ const DoughnutChart = ({ estadisticasSemanal = [], metodosPagoHoy = {} }) => {
       hoverOffset: 10,
       hoverBorderWidth: 4
     }]
-  };
+  }), [efectivoMonto, transferenciaMonto]); // Dependencias: efectivoMonto y transferenciaMonto
 
   // Validar y preparar datos para el gráfico de barras (ventas semanales)
-  let datosEstadisticas = [];
-  let etiquetasDias = [];
-  
-  if (Array.isArray(estadisticasSemanal) && estadisticasSemanal.length > 0) {
-    // Usar datos reales
-    etiquetasDias = estadisticasSemanal.map(item => {
-      // Formatear el día para que sea más legible
-      const dia = item.dia || item.fecha || 'N/A';
-      if (dia.length > 3) {
-        // Si es una fecha completa, extraer el día
-        try {
-          const fecha = new Date(dia);
-          return fecha.toLocaleDateString('es-ES', { weekday: 'short' });
-        } catch {
-          return dia.substring(0, 3);
-        }
-      }
-      return dia;
-    });
-    datosEstadisticas = estadisticasSemanal.map(item => item.monto || 0);
-  } else {
-    // Datos de fallback si no hay datos válidos
-    etiquetasDias = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-    datosEstadisticas = [12000, 8000, 15000, 10000, 20000, 25000, 18000];
-    console.log('⚠️ Usando datos de fallback para estadísticas semanales');
-  }
+  const { datosEstadisticas, etiquetasDias } = useMemo(() => {
+    let datosEstadisticas = [];
+    let etiquetasDias = [];
 
-  const datosBarras = {
+    if (Array.isArray(estadisticasSemanal) && estadisticasSemanal.length > 0) {
+      // Usar datos reales
+      etiquetasDias = estadisticasSemanal.map(item => {
+        // Formatear el día para que sea más legible
+        const dia = item.dia || item.fecha || 'N/A';
+        if (dia.length > 3) {
+          // Si es una fecha completa, extraer el día
+          try {
+            const fecha = new Date(dia);
+            return format(fecha, 'EEE', { locale: es });  // Formatear con date-fns
+          } catch {
+            return dia.substring(0, 3);
+          }
+        }
+        return dia;
+      });
+      datosEstadisticas = estadisticasSemanal.map(item => item.monto || 0);
+    } else {
+      // Datos de fallback si no hay datos válidos
+      etiquetasDias = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+      datosEstadisticas = [12000, 8000, 15000, 10000, 20000, 25000, 18000];
+      console.log('⚠️ Usando datos de fallback para estadísticas semanales');
+    }
+
+    return { datosEstadisticas, etiquetasDias };
+  }, [estadisticasSemanal]); // Dependencia: estadisticasSemanal
+
+  const datosBarras = useMemo(() => ({
     labels: etiquetasDias,
     datasets: [{
       label: 'Ventas por día',
@@ -96,10 +102,10 @@ const DoughnutChart = ({ estadisticasSemanal = [], metodosPagoHoy = {} }) => {
       hoverBorderColor: '#FF6B35',
       hoverBorderWidth: 3
     }]
-  };
+  }), [etiquetasDias, datosEstadisticas]); // Dependencias: etiquetasDias y datosEstadisticas
 
   // Opciones para el gráfico de dona
-  const opcionesDonut = {
+  const opcionesDonut = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -125,7 +131,7 @@ const DoughnutChart = ({ estadisticasSemanal = [], metodosPagoHoy = {} }) => {
         cornerRadius: 12,
         displayColors: true,
         callbacks: {
-          label: function(context) {
+          label: function (context) {
             const total = context.dataset.data.reduce((a, b) => a + b, 0);
             const percentage = total > 0 ? Math.round((context.parsed / total) * 100) : 0;
             return `${context.label}: $${context.parsed.toLocaleString()} (${percentage}%)`;
@@ -140,10 +146,10 @@ const DoughnutChart = ({ estadisticasSemanal = [], metodosPagoHoy = {} }) => {
       duration: 1500,
       easing: 'easeInOutQuart'
     }
-  };
+  }), []); // No hay dependencias, las opciones son estáticas
 
   // Opciones para el gráfico de barras
-  const opcionesBarras = {
+  const opcionesBarras = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -171,7 +177,7 @@ const DoughnutChart = ({ estadisticasSemanal = [], metodosPagoHoy = {} }) => {
         borderWidth: 1,
         cornerRadius: 12,
         callbacks: {
-          label: function(context) {
+          label: function (context) {
             return `Ventas: $${context.parsed.y.toLocaleString()}`;
           }
         }
@@ -201,7 +207,7 @@ const DoughnutChart = ({ estadisticasSemanal = [], metodosPagoHoy = {} }) => {
           font: {
             size: 12
           },
-          callback: function(value) {
+          callback: function (value) {
             return '$' + value.toLocaleString();
           }
         }
@@ -211,7 +217,7 @@ const DoughnutChart = ({ estadisticasSemanal = [], metodosPagoHoy = {} }) => {
       duration: 2000,
       easing: 'easeInOutQuart'
     }
-  };
+  }), []); // No hay dependencias, las opciones son estáticas
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
@@ -229,7 +235,7 @@ const DoughnutChart = ({ estadisticasSemanal = [], metodosPagoHoy = {} }) => {
             <p className="text-xs text-gray-400">Total del día</p>
           </div>
         </div>
-        
+
         <div className="relative h-80">
           {totalMetodos > 0 ? (
             <Doughnut data={datosDonut} options={opcionesDonut} />
@@ -290,7 +296,7 @@ const DoughnutChart = ({ estadisticasSemanal = [], metodosPagoHoy = {} }) => {
             <p className="text-xs text-gray-400">Total semanal</p>
           </div>
         </div>
-        
+
         <div className="relative h-80">
           <Bar data={datosBarras} options={opcionesBarras} />
         </div>
