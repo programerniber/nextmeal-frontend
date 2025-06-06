@@ -252,7 +252,7 @@ const PedidoForm = ({ pedido, onClose, onSave }) => {
       // Pasar la respuesta al componente padre para que actualice la lista correctamente
       onSave(respuesta)
     } catch (error) {
-      console.error("Error al guardar pedido:", error)
+    
       const errorMessage = error.message || "Error al guardar el pedido"
       setSubmitError(errorMessage)
       toast.error(`Error: ${errorMessage}`)
