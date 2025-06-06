@@ -1,12 +1,12 @@
 import axios from "axios";
 
 // ✅URL base (ajústala si cambias el puerto)
-const VITE_API_URL = "http://localhost:3000/api";
+const VITE_API_URL = "https://nextmeal-rapido.onrender.com";
 
 // Instancia de axios centralizada
 const apiClient = axios.create({
   baseURL: VITE_API_URL + "/dashboard",
-  timeout: 8000
+  timeout: 8000,
 });
 
 //  Cache en memoria
@@ -47,11 +47,13 @@ export const obtenerEstadisticasSemanal = async () => {
 
 export const obtenerMetodosPagoHoy = async () => {
   const res = await apiClient.get("/metodos-pago/hoy");
-  return res.data?.data || {
-    efectivo: { cantidad: 0, monto: 0, porcentaje: 0 },
-    transferencia: { cantidad: 0, monto: 0, porcentaje: 0 },
-    total: { cantidad: 0, monto: 0 }
-  };
+  return (
+    res.data?.data || {
+      efectivo: { cantidad: 0, monto: 0, porcentaje: 0 },
+      transferencia: { cantidad: 0, monto: 0, porcentaje: 0 },
+      total: { cantidad: 0, monto: 0 },
+    }
+  );
 };
 
 export const obtenerVentasEnTiempoReal = async () => {
@@ -77,7 +79,7 @@ export const debugDashboardEndpoints = async () => {
     "/estadisticas/semanal",
     "/metodos-pago/hoy",
     "/ventas/tiempo-real",
-    "/ventas/semanales"
+    "/ventas/semanales",
   ];
 
   for (const endpoint of endpoints) {
