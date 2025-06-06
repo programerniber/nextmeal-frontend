@@ -23,7 +23,7 @@ export const createPedido = async (pedidoData) => {
         .join(", ")
       error.message = errorMessage || error.message
     } else if (error.response.data?.mensaje) {
-      console.error("Mensaje de error del backend:", error)
+      console.error("Mensaje de error del backend:")
     } else {
       console.error("Error al crear pedido:", error.message)
     }
