@@ -326,7 +326,7 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
 
           <FormSteps />
 
-          <form onSubmit={handleSubmit}>
+          <form>
             {formFieldsByStep[currentStep].map(renderFormField)}
 
             <div className="flex justify-between mt-6">
@@ -354,7 +354,8 @@ const CategoriaForm = ({ categoria, onClose, onSave }) => {
                 </button>
               ) : (
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={handleSubmit}
                   disabled={isSubmitting}
                   className={`px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2 border border-orange-500 ${
                     isSubmitting ? "opacity-70 cursor-not-allowed" : ""

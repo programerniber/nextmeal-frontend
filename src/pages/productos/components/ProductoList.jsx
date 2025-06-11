@@ -41,12 +41,17 @@ const ProductoList = ({ productos = [], onEdit, onRefresh }) => {
   // Asegurarnos de que productos sea siempre un array
   const productosArray = Array.isArray(productos) ? productos : []
 
-  const filteredProductos = productosArray.filter((producto) =>
-    [producto?.nombre || "", producto?.descripcion || "", producto?.categoria?.nombre || ""]
+  const filteredProductos = productosArray.filter((producto) => {
+    console.log("Producto para filtrar:", producto) // Debug
+    return [
+      producto?.nombre || "",
+      producto?.descripcion || "",
+      producto?.categoria?.nombre || producto?.Categoria?.nombre || "",
+    ]
       .join(" ")
       .toLowerCase()
-      .includes(debouncedSearchTerm.toLowerCase()),
-  )
+      .includes(debouncedSearchTerm.toLowerCase())
+  })
 
   const totalPages = Math.ceil(filteredProductos.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
@@ -65,8 +70,8 @@ const ProductoList = ({ productos = [], onEdit, onRefresh }) => {
       await deleteProducto(productoToDelete.id)
       toast.success(`Producto ${productoToDelete.nombre} eliminado exitosamente`)
       if (typeof onRefresh === "function") {
-      onRefresh()
-}
+        onRefresh()
+      }
       setIsDeleting(false)
       setProductoToDelete(null)
     } catch (error) {
@@ -81,9 +86,9 @@ const ProductoList = ({ productos = [], onEdit, onRefresh }) => {
       setActionError("")
       await toggleProductoEstado(producto.id, producto.estado)
       toast.success(
-       `producto ${producto.nombre} ${producto.estado === "activo"? "desactivado":"activado"} correctamente` 
+        `producto ${producto.nombre} ${producto.estado === "activo" ? "desactivado" : "activado"} correctamente`,
       )
-       if (typeof onRefresh === "function") {
+      if (typeof onRefresh === "function") {
         onRefresh()
       }
     } catch (error) {
@@ -155,7 +160,9 @@ const ProductoList = ({ productos = [], onEdit, onRefresh }) => {
               paginatedProductos.map((producto) => (
                 <tr key={producto.id} className="hover:bg-gray-800 transition-colors">
                   <td className="px-6 py-4 text-white text-sm">{producto.nombre}</td>
-                  <td className="px-6 py-4 text-gray-300 text-sm">{producto.categoria?.nombre || "Sin categoría"}</td>
+                  <td className="px-6 py-4 text-gray-300 text-sm">
+                    { producto.Categorium?.nombre || "Sin categoría"}
+                  </td>
                   <td className="px-6 py-4 text-gray-300 text-sm">{formatPrice(producto.precio)}</td>
                   <td className="px-6 py-4">
                     <button
