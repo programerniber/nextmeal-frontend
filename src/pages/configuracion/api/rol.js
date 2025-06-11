@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // Ruta base de la API
-const VITE_API_URL = "https://nextmeal-rapido.onrender.com";
+const VITE_API_URL = "http://localhost:3000/api";
 
 // Función para obtener los headers de autorización
 const getAuthHeaders = () => ({

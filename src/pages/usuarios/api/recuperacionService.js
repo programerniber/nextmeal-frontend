@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // Configura la URL base correctamente - Ajusta según tu entorno
-const VITE_API_URL = "https://nextmeal-rapido.onrender.com";
+const VITE_API_URL = "http://localhost:3000/api";
 
 // Solicitar código de recuperación
 export const solicitarRecuperacion = async (email) => {
