@@ -108,8 +108,8 @@ export const fetchUsuarios = async () => {
       headers: {
         Authorization: `Bearer ${token}`,
       },
-    });
-    return response.data.usuarios || response.data;
+    })
+    return response.data.usuarios || response.data.data || response.data
   } catch (error) {
     console.error("Error al obtener usuarios:", error);
     throw error;
@@ -118,38 +118,78 @@ export const fetchUsuarios = async () => {
 
 export const createUsuario = async (usuarioData) => {
   try {
-    const token = localStorage.getItem("token");
-    const response = await axios.post(
-      `${VITE_API_URL}/autenticacion/usuarios`,
-      usuarioData,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-    return response.data;
+    const token = localStorage.getItem("token")
+
+    // Validar datos antes de enviar
+    if (!usuarioData.nombre || !usuarioData.email || !usuarioData.cedula) {
+      throw new Error("Faltan campos obligatorios: nombre, email y cédula son requeridos")
+    }
+
+    // Limpiar y formatear los datos
+    const dataToSend = {
+      nombre: usuarioData.nombre.trim(),
+      email: usuarioData.email.trim().toLowerCase(),
+      cedula: usuarioData.cedula.toString().trim(),
+      telefono: usuarioData.telefono ? usuarioData.telefono.trim() : null,
+      direccion: usuarioData.direccion ? usuarioData.direccion.trim() : null,
+      id_rol: usuarioData.id_rol || 3, // Por defecto rol de cliente
+      estado: usuarioData.estado || "activo",
+      password: usuarioData.password || usuarioData.cedula, // Si no hay password, usar cédula
+    }
+
+    console.log("Datos a enviar:", dataToSend)
+
+    const response = await axios.post(`${VITE_API_URL}/autenticacion/usuarios`, dataToSend, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    })
+    return response.data
   } catch (error) {
-    console.error("Error al crear usuario:", error);
-    throw error;
+    console.error("Error al crear usuario:", error)
+
+    // Mejorar el manejo de errores
+    let errorMessage = "Error desconocido al crear usuario"
+
+    if (error.response?.data) {
+      errorMessage =
+        error.response.data.mensaje || error.response.data.error || error.response.data.message || errorMessage
+    } else if (error.message) {
+      errorMessage = error.message
+    }
+
+    // Crear un error personalizado con más información
+    const customError = new Error(errorMessage)
+    customError.status = error.response?.status
+    customError.details = error.response?.data
+    throw customError
   }
 };
 
 export const updateUsuario = async (id, usuarioData) => {
   try {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token")
+
+    // Limpiar y formatear los datos
+    const dataToSend = {
+      ...usuarioData,
+      nombre: usuarioData.nombre?.trim(),
+      email: usuarioData.email?.trim().toLowerCase(),
+      cedula: usuarioData.cedula?.toString().trim(),
+      telefono: usuarioData.telefono?.trim() || null,
+      direccion: usuarioData.direccion?.trim() || null,
+    }
+
     // Intentar con PUT primero
     try {
-      const response = await axios.put(
-        `${VITE_API_URL}/autenticacion/usuarios/${id}`,
-        usuarioData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      return response.data;
+      const response = await axios.put(`${VITE_API_URL}/autenticacion/usuarios/${id}`, dataToSend, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      })
+      return response.data
     } catch (putError) {
       console.log(
         "PUT falló, intentando con PATCH como fallback:",
@@ -157,16 +197,13 @@ export const updateUsuario = async (id, usuarioData) => {
       );
 
       // Si falla el PUT, intentar con PATCH como fallback (solo para los campos proporcionados)
-      const response = await axios.patch(
-        `${VITE_API_URL}/autenticacion/usuarios/${id}`,
-        usuarioData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      return response.data;
+      const response = await axios.patch(`${VITE_API_URL}/autenticacion/usuarios/${id}`, dataToSend, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      })
+      return response.data
     }
   } catch (error) {
     console.error(`Error al actualizar usuario con ID ${id}:`, error);
@@ -250,25 +287,13 @@ export const toggleUsuarioEstado = async (id, estadoActual) => {
       );
     }
 
-    // Manejar el caso cuando estadoActual es undefined
-    let nuevoEstado;
-    if (estadoActual === undefined || estadoActual === null) {
-      // Si el estado actual no está definido, establecerlo como "activo" por defecto
-      nuevoEstado = "activo";
-      console.log(
-        `Cambiando estado del usuario ${id} a ${nuevoEstado} (estado anterior no definido)`
-      );
-    } else {
-      // Cambiar entre "activo" e "inactivo"
-      nuevoEstado = estadoActual === "activo" ? "inactivo" : "activo";
-      console.log(
-        `Cambiando estado del usuario ${id} de ${estadoActual} a ${nuevoEstado}`
-      );
-    }
+    // Determinar el nuevo estado (invertir el actual)
+    const nuevoEstado = estadoActual === "activo" ? "inactivo" : "activo"
+    console.log(`Cambiando estado del usuario ${id} de ${estadoActual} a ${nuevoEstado}`)
 
-    // Intentar con PUT directamente a la ruta específica para cambiar estado
+    // Realizar la petición al servidor
     const res = await axios.put(
-      `${VITE_API_URL}/autenticacion/usuarios/${id}/estado`,
+      `${VITE_API_URL}/autenticacion/usuarios/${id}`,
       { estado: nuevoEstado },
       { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -276,13 +301,19 @@ export const toggleUsuarioEstado = async (id, estadoActual) => {
     console.log("Respuesta del servidor:", res.data);
     return res.data;
   } catch (error) {
-    console.error("Error al cambiar estado del usuario:", error);
-    if (error.response?.data?.mensaje) {
-      error.message = error.response.data.mensaje;
-    }
-    throw error;
+    console.error("Error al cambiar estado del usuario:", error)
+
+    // Extraer mensaje de error más descriptivo si está disponible
+    const errorMessage =
+      error.response?.data?.mensaje ||
+      error.response?.data?.error ||
+      error.message ||
+      "Error desconocido al cambiar estado"
+
+    const customError = new Error(errorMessage)
+    throw customError
   }
-};
+}
 
 // Función para obtener todos los roles
 export const fetchRoles = async () => {
@@ -300,52 +331,68 @@ export const fetchRoles = async () => {
   }
 };
 
-// Añadir la función verificarDuplicado después de fetchRoles
-// Función para verificar si existe un duplicado (cédula, email, etc.)
+// Función mejorada para verificar duplicados
 export const verificarDuplicado = async (campo, valor) => {
   try {
-    const token = localStorage.getItem("token");
-    // Primero intentamos con la ruta específica para verificar duplicados
-    try {
-      const response = await axios.get(
-        `${VITE_API_URL}/autenticacion/verificar-duplicado`,
-        {
-          params: { campo, valor },
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      return response.data;
-    } catch (routeError) {
-      console.log(
-        "Ruta específica no disponible, usando método alternativo:",
-        routeError.message
-      );
+    console.log(`Verificando duplicado para ${campo}: ${valor}`)
 
-      // Si la ruta específica falla, hacemos una verificación manual obteniendo todos los usuarios
-      // y verificando si existe alguno con el valor especificado para el campo dado
-      const usuarios = await fetchUsuarios();
-
-      // Verificar si existe algún usuario con el mismo valor para el campo especificado
-      const duplicado = usuarios.some(
-        (usuario) =>
-          usuario[campo] &&
-          usuario[campo].toString().toLowerCase() ===
-            valor.toString().toLowerCase()
-      );
-
-      return {
-        duplicado,
-        mensaje: duplicado
-          ? `Ya existe un usuario con este ${campo}`
-          : `No existe un usuario con este ${campo}`,
-      };
+    // Validar parámetros de entrada
+    if (!campo || !valor) {
+      return { duplicado: false, mensaje: "Parámetros inválidos para verificación" }
     }
+
+    // Obtener todos los usuarios y verificar manualmente
+    // (ya que el endpoint específico no existe en el backend)
+    const usuarios = await fetchUsuarios()
+
+    if (!Array.isArray(usuarios)) {
+      console.warn("La respuesta de usuarios no es un array:", usuarios)
+      return { duplicado: false, mensaje: "Error al obtener lista de usuarios" }
+    }
+
+    // Verificar si existe algún usuario con el mismo valor para el campo especificado
+    const duplicado = usuarios.some((usuario) => {
+      if (!usuario[campo]) return false
+
+      const valorUsuario = usuario[campo].toString().toLowerCase().trim()
+      const valorBusqueda = valor.toString().toLowerCase().trim()
+
+      return valorUsuario === valorBusqueda
+    })
+
+    const mensaje = duplicado ? `Ya existe un usuario con este ${campo}: ${valor}` : `El ${campo} está disponible`
+
+    console.log(`Resultado verificación ${campo}:`, { duplicado, mensaje })
+
+    return { duplicado, mensaje }
   } catch (error) {
-    console.error(`Error al verificar duplicado de ${campo}:`, error);
-    // En caso de error, asumimos que no hay duplicado para no bloquear al usuario
-    return { duplicado: false, mensaje: "No se pudo verificar duplicados" };
+    console.error(`Error al verificar duplicado de ${campo}:`, error)
+
+    // En caso de error, devolver que no hay duplicado para no bloquear al usuario
+    // pero registrar el error para debugging
+    return {
+      duplicado: false,
+      mensaje: `No se pudo verificar duplicados para ${campo}. Error: ${error.message}`,
+      error: true,
+    }
+  }
+}
+
+// Función para verificar múltiples campos a la vez
+export const verificarMultiplesDuplicados = async (campos) => {
+  try {
+    const resultados = {}
+
+    for (const [campo, valor] of Object.entries(campos)) {
+      if (valor && valor.toString().trim()) {
+        resultados[campo] = await verificarDuplicado(campo, valor)
+      }
+    }
+
+    return resultados
+  } catch (error) {
+    console.error("Error al verificar múltiples duplicados:", error)
+    return {}
   }
 };
 
@@ -513,4 +560,4 @@ export const obtenerPermisosUsuario = async () => {
       source: "permisos de emergencia por error",
     };
   }
-};
+}

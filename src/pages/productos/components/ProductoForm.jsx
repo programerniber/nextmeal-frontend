@@ -38,6 +38,7 @@ const ProductoForm = ({ producto, onClose, onSave }) => {
       setLoadingCategorias(true)
       const data = await fetchCategorias()
       console.log("Categorías cargadas:", data)
+      console.log("Estructura de categorías:", data.data || [])
       setCategorias(data.data || [])
     } catch (error) {
       console.error("Error al cargar categorías:", error)
@@ -166,6 +167,8 @@ const ProductoForm = ({ producto, onClose, onSave }) => {
       }
 
       console.log("Datos a enviar:", productoData)
+      console.log("ID de categoría seleccionada:", productoData.Id_Categoria)
+      console.log("Categorías disponibles:", categorias)
 
       let resultado
       if (producto && producto.id) {
@@ -244,11 +247,11 @@ const ProductoForm = ({ producto, onClose, onSave }) => {
           { value: "inactivo", label: "Inactivo" },
         ],
         icon:
-        formData.estado === "activo" ? (
-          <CheckCircle size={18} className="text-green-400" />
-        ) : (
-          <AlertCircle size={18} className="text-red-400" />
-        ),
+          formData.estado === "activo" ? (
+            <CheckCircle size={18} className="text-green-400" />
+          ) : (
+            <AlertCircle size={18} className="text-red-400" />
+          ),
       },
       {
         type: "image",
@@ -424,7 +427,7 @@ const ProductoForm = ({ producto, onClose, onSave }) => {
 
           <FormSteps />
 
-          <form onSubmit={handleSubmit}>
+          <form>
             {formFieldsByStep[currentStep].map(renderFormField)}
 
             <div className="flex justify-between mt-6">
@@ -452,7 +455,8 @@ const ProductoForm = ({ producto, onClose, onSave }) => {
                 </button>
               ) : (
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={handleSubmit}
                   className={`px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 border border-green-500 ${
                     isSubmitting ? "opacity-70 cursor-not-allowed" : ""
                   }`}
