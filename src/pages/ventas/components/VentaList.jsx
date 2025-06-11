@@ -102,7 +102,7 @@ const VentaList = ({ onEdit, onDelete, onRefresh }) => {
       setVentaToDelete(null)
     } catch (error) {
       console.error("Error al eliminar venta:", error)
-      const errorMessage = "Error al eliminar: " + error.message
+      const errorMessage = " " + error.message
       setError(errorMessage)
     }
   }

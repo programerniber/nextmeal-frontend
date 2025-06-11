@@ -125,7 +125,7 @@ const VentaForm = ({ venta, onClose, onSave }) => {
       onSave(respuesta)
     } catch (error) {
       console.error("Error al guardar venta:", error)
-      const errorMessage = error.message || "Error al guardar la venta"
+      const errorMessage = error.message || "Venta ya registrada"
       setSubmitError(errorMessage)
     } finally {
       setIsSubmitting(false)

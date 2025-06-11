@@ -5,7 +5,7 @@ import {App} from './App.jsx'
 import './App.css'
 
 
-window.API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api"
+window.API_URL = import.meta.env.VITE_API_URL ||"https://nextmeal-rapido.onrender.com"
 
 const root = ReactDOM.createRoot(document.getElementById('root'))
 
