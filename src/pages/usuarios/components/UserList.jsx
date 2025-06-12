@@ -68,7 +68,7 @@ const UserList = ({ usuarios, onEdit, onRefresh, isAdmin }) => {
     const cargarRoles = async () => {
       try {
         setLoading(true)
-        const rolesData = await fetchRoles()  
+        const rolesData = await fetchRoles()
         setRoles(Array.isArray(rolesData) ? rolesData : [])
       } catch (error) {
         console.error("Error al cargar roles:", error)
@@ -91,36 +91,28 @@ const UserList = ({ usuarios, onEdit, onRefresh, isAdmin }) => {
   const handleToggleEstado = async (usuario) => {
     if (!isAdmin) return
 
-
     try {
       setLoadingStatus(usuario.id)
       setActionError("")
 
-      try {
-        // Llamar al servicio para cambiar el estado
-        const nuevoEstado = usuario.estado == "activo" ? "inactivo" : "activo"
-        await toggleUsuarioEstado(usuario.id, usuario.estado)
+      // Llamar al servicio para cambiar el estado
+      const nuevoEstado = usuario.estado === "activo" ? "inactivo" : "activo"
+      await toggleUsuarioEstado(usuario.id, usuario.estado)
 
-        // Mostrar notificación de éxito
-        toast.success(
-          `Usuario ${usuario.nombre} ${nuevoEstado === "activo" ? "activado" : "desactivado"} correctamente`,
-        )
+      // Mostrar notificación de éxito
+      toast.success(`Usuario ${usuario.nombre} ${nuevoEstado === "activo" ? "activado" : "desactivado"} correctamente`)
 
-        // Notificar al componente padre para actualizar la lista
-        if (typeof onRefresh === "function") {
-          onRefresh()
-        }
-      } catch (error) {
-        console.error("Error al cambiar estado del usuario:", error)
-
-        // Mensaje de error más descriptivo
-        const errorMessage = error.message || "Error desconocido al cambiar estado"
-        setActionError(errorMessage)
-        toast.error(`Error al cambiar estado: ${errorMessage}`)
+      // Notificar al componente padre para actualizar la lista
+      if (typeof onRefresh === "function") {
+        onRefresh()
       }
     } catch (error) {
-      console.error("Error general al cambiar estado:", error)
-      setActionError("Error inesperado al procesar la solicitud")
+      console.error("Error al cambiar estado del usuario:", error)
+
+      // Mensaje de error más descriptivo
+      const errorMessage = error.message || "Error desconocido al cambiar estado"
+      setActionError(errorMessage)
+      toast.error(`Error al cambiar estado: ${errorMessage}`)
     } finally {
       setLoadingStatus(null)
     }
@@ -253,10 +245,11 @@ const UserList = ({ usuarios, onEdit, onRefresh, isAdmin }) => {
                       <button
                         onClick={() => handleToggleEstado(usuario)}
                         disabled={!isAdmin || loadingStatus === usuario.id}
-                        className={`px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full ${usuario.estado === "activo"
+                        className={`px-2 py-1 inline-flex items-center text-xs font-semibold rounded-full ${
+                          usuario.estado === "activo"
                             ? "bg-green-900 text-green-300 border border-green-500 hover:bg-green-800"
                             : "bg-red-900 text-red-300 border border-red-500 hover:bg-red-800"
-                          } ${!isAdmin || loadingStatus === usuario.id ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
+                        } ${!isAdmin || loadingStatus === usuario.id ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
                         title={
                           isAdmin
                             ? `Cambiar a ${usuario.estado === "activo" ? "inactivo" : "activo"}`
@@ -331,7 +324,8 @@ const UserList = ({ usuarios, onEdit, onRefresh, isAdmin }) => {
                     No se encontraron usuarios
                   </td>
                 </tr>
-              )) : (
+              )
+            ) : (
               <tr>
                 <td colSpan="4" className="px-6 py-4 text-center text-gray-400">
                   Cargando...
@@ -370,10 +364,11 @@ const UserList = ({ usuarios, onEdit, onRefresh, isAdmin }) => {
                 <button
                   key={i + 1}
                   onClick={() => setCurrentPage(i + 1)}
-                  className={`px-3 py-1 rounded ${currentPage === i + 1
+                  className={`px-3 py-1 rounded ${
+                    currentPage === i + 1
                       ? "bg-orange-600 text-white border border-orange-500"
                       : "text-white border border-gray-600 hover:bg-gray-700"
-                    }`}
+                  }`}
                 >
                   {i + 1}
                 </button>
@@ -399,7 +394,14 @@ const UserList = ({ usuarios, onEdit, onRefresh, isAdmin }) => {
       )}
 
       {/* Modal de detalles de usuario */}
-      {showDetailModal && <UserDetailModal usuario={showDetailModal} onClose={() => setShowDetailModal(null)} renderRol={renderRol} roles={roles} />}
+      {showDetailModal && (
+        <UserDetailModal
+          usuario={showDetailModal}
+          onClose={() => setShowDetailModal(null)}
+          renderRol={renderRol}
+          roles={roles}
+        />
+      )}
 
       {/* Modal de confirmación de eliminación */}
       {isDeleting && (

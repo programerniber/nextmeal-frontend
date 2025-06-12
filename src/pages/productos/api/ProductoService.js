@@ -42,13 +42,14 @@ export const createProducto = async (productoData) => {
 // ✅ Obtener todos los productos (GET)
 export const fetchProductos = async () => {
   try {
-    const token = localStorage.getItem("token");
-    const res = await axios.get(`${VITE_API_URL}/productos`, {
+    const token = localStorage.getItem("token")
+    const res = await axios.get(`${VITE_API_URL}/productos?include=categoria`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
-    });
-    return res.data.data;
+    })
+    console.log("Productos obtenidos:", res.data.data)
+    return res.data.data
   } catch (error) {
     console.error("Error al obtener productos", error);
     throw error;
@@ -58,13 +59,14 @@ export const fetchProductos = async () => {
 // ✅ Obtener producto por ID (GET)
 export const fetchProductoById = async (id) => {
   try {
-    const token = localStorage.getItem("token");
-    const res = await axios.get(`${VITE_API_URL}/productos/${id}`, {
+    const token = localStorage.getItem("token")
+    const res = await axios.get(`${VITE_API_URL}/productos/${id}?include=categoria`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
-    });
-    return res.data.data;
+    })
+    console.log("Producto obtenido por ID:", res.data.data)
+    return res.data.data
   } catch (error) {
     console.error("Error al obtener producto por ID", error);
     if (error.response?.data?.mensaje) {
@@ -181,4 +183,4 @@ export const toggleProductoEstado = async (id, estadoActual) => {
     }
     throw error;
   }
-};
+}
