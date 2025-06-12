@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // Configura la URL base correctamente - Ajusta según tu entorno de Vite
-const VITE_API_URL = "https://nextmeal-rapido.onrender.com";
+const VITE_API_URL = "http://localhost:3000/api";
 // Configurar axios para incluir cookies en las solicitudes
 axios.defaults.withCredentials = true;
 

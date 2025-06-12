@@ -1,7 +1,7 @@
 // Servicio para manejar las operaciones de ventas
 import axios from "axios";
 
-const VITE_API_URL = "https://nextmeal-rapido.onrender.com";
+const VITE_API_URL = "http://localhost:3000/api";
 
 // URL base para obtener todas las ventas
 export const fetchVentas = async () => {

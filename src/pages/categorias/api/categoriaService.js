@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const VITE_API_URL = "https://nextmeal-rapido.onrender.com";
+const VITE_API_URL = "http://localhost:3000/api";
 
 // ✅ Crear categoría (POST)
 export const createCategoria = async (categoryData) => {
